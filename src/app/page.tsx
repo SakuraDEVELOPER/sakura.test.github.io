@@ -17,11 +17,11 @@ type ShowcaseSlide = {
   mediaSrc: string;
 };
 
-const siteBasePath = process.env.NEXT_PUBLIC_SITE_BASE_PATH ?? "";
+const repoBasePath = "/sakura.github.io";
 const assetVersion = "20260324-1";
 
 function withRepoBasePath(path: string, bustCache = false) {
-  return `${siteBasePath}${path}${bustCache ? `?v=${assetVersion}` : ""}`;
+  return `${repoBasePath}${path}${bustCache ? `?v=${assetVersion}` : ""}`;
 }
 
 function pseudoRandom(seed: number) {
