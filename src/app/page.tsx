@@ -808,12 +808,14 @@ function DownloadSection() {
         </div>
 
         <div className="flex w-full flex-col gap-3 md:w-auto">
-          <a
-            href={withRepoBasePath("/sakura.zip")}
-            className="bg-[#ffb7c5] px-12 py-5 text-center text-sm font-black uppercase text-black shadow-[0_0_30px_rgba(255,183,197,0.2)] transition-all hover:bg-[#ffcdd7] active:scale-95"
+          <button
+            type="button"
+            disabled
+            aria-disabled="true"
+            className="cursor-not-allowed bg-[#ffb7c5]/70 px-12 py-5 text-center text-sm font-black uppercase text-black/75 shadow-[0_0_30px_rgba(255,183,197,0.12)]"
           >
-            Download .EXE
-          </a>
+            Soon
+          </button>
           <span className="text-center font-mono text-[10px] text-gray-600">MD5: 7A9D...F2C1</span>
         </div>
       </motion.div>
