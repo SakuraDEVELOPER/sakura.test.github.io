@@ -18,9 +18,10 @@ type ShowcaseSlide = {
 };
 
 const repoBasePath = "/sakura.github.io";
+const assetVersion = "20260324-1";
 
-function withRepoBasePath(path: string) {
-  return `${repoBasePath}${path}`;
+function withRepoBasePath(path: string, bustCache = false) {
+  return `${repoBasePath}${path}${bustCache ? `?v=${assetVersion}` : ""}`;
 }
 
 function pseudoRandom(seed: number) {
@@ -50,7 +51,7 @@ const showcaseSlides: ShowcaseSlide[] = [
     mediaOverlayTitle: "Отдаление камеры",
     mediaCaption: "Функция отдаления камеры",
     mediaLabel: "Скриншот функции отдаления камеры",
-    mediaSrc: withRepoBasePath("/camera-preview.jpg"),
+    mediaSrc: withRepoBasePath("/camera-preview.jpg", true),
   },
   {
     id: "hud-panel",
@@ -60,7 +61,7 @@ const showcaseSlides: ShowcaseSlide[] = [
     mediaOverlayTitle: "Enemy esp",
     mediaCaption: "HUD с барами, скиллами и предметами",
     mediaLabel: "Скриншот HUD с барами, скиллами и предметами",
-    mediaSrc: withRepoBasePath("/hud-preview.jpg"),
+    mediaSrc: withRepoBasePath("/hud-preview.jpg", true),
   },
 ];
 
