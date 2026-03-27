@@ -41,7 +41,7 @@ const AUTH_ERROR_EVENT = "sakura-auth-error";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v3";
+const PROFILE_BUILD_MARKER = "role-colors-v4";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -80,6 +80,10 @@ const formatTime = (value: string | null) =>
 const normalizeRoleName = (role: string) => {
   const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, " ");
   const compactRole = normalizedRole.replace(/[\s_-]+/g, "");
+
+  if (/^co[\s_-]*owner$/i.test(role.trim())) {
+    return "co-owner";
+  }
 
   if (compactRole === "admin" || compactRole === "administrator") {
     return "administrator";

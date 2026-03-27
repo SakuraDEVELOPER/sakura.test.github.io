@@ -214,6 +214,10 @@ const firebaseModuleScript = `
       return "";
     }
 
+    if (/^co[\s_-]*owner$/i.test(role.trim())) {
+      return "co-owner";
+    }
+
     if (compactRole === "admin" || compactRole === "administrator") {
       return "administrator";
     }
