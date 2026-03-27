@@ -27,6 +27,12 @@ const firebaseModuleScript = `
     setDoc,
     where
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import {
+    getDownloadURL,
+    getStorage,
+    ref as storageRef,
+    uploadBytes
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAnZQt5NWXGOWuz3STh_vy-dSENVBM9_ZY",
@@ -40,7 +46,9 @@ const firebaseModuleScript = `
 
   const LOGIN_MAX_LENGTH = 24;
   const LOGIN_MIN_LENGTH = 3;
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
   const USER_UPDATE_EVENT = "sakura-user-update";
+  const AVATAR_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
   const LOGIN_PATTERN = /^[A-Za-zА-Яа-яЁё0-9._-]+$/;
 
   const createFirebaseError = (code, message) => {
@@ -158,6 +166,20 @@ const firebaseModuleScript = `
     };
   };
 
+  const buildUserDetailsFromSnapshot = (user, details = {}) => ({
+    login: details.login ?? null,
+    loginLower: details.loginLower ?? null,
+    displayName: details.displayName ?? user.displayName ?? details.login ?? null,
+    profileId: typeof details.profileId === "number" ? details.profileId : null,
+    photoURL: user.photoURL ?? details.photoURL ?? null,
+    providerIds: Array.isArray(details.providerIds) ? details.providerIds : getProviderIds(user),
+    loginHistory: Array.isArray(details.loginHistory)
+      ? details.loginHistory
+      : buildLoginHistory([], user.metadata.creationTime ?? null, user.metadata.lastSignInTime ?? null),
+    visitHistory: normalizeVisitHistory(details.visitHistory),
+    presence: normalizePresence(details.presence, window.location.pathname),
+  });
+
   const toUserSnapshot = (user, details = {}) =>
     user
       ? {
@@ -185,6 +207,7 @@ const firebaseModuleScript = `
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
     const provider = new GoogleAuthProvider();
 
     const userRefFor = (uid) => doc(db, "users", uid);
@@ -561,6 +584,75 @@ const firebaseModuleScript = `
       return snapshot;
     };
 
+    const updateAvatar = async (file) => {
+      const user = auth.currentUser;
+
+      if (!user) {
+        throw createFirebaseError("auth/no-current-user", "Sign in again to update your avatar.");
+      }
+
+      if (!(file instanceof File)) {
+        throw createFirebaseError("storage/invalid-file", "Choose an image before uploading.");
+      }
+
+      if (!AVATAR_CONTENT_TYPES.has(file.type)) {
+        throw createFirebaseError(
+          "storage/unsupported-file-type",
+          "Avatar must be PNG, JPG, WEBP, or GIF."
+        );
+      }
+
+      if (file.size > MAX_AVATAR_BYTES) {
+        throw createFirebaseError("storage/file-too-large", "Avatar must be 5 MB or smaller.");
+      }
+
+      const rawExtension = file.name.includes(".") ? file.name.split(".").pop() : "";
+      const safeExtension = String(rawExtension ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "") || "png";
+      const avatarFileRef = storageRef(
+        storage,
+        "avatars/" + user.uid + "/avatar-" + Date.now() + "." + safeExtension
+      );
+
+      await uploadBytes(avatarFileRef, file, {
+        contentType: file.type,
+        cacheControl: "public,max-age=31536000",
+      });
+
+      const photoURL = await getDownloadURL(avatarFileRef);
+
+      await updateProfile(user, {
+        photoURL,
+      });
+
+      try {
+        await setDoc(
+          userRefFor(user.uid),
+          {
+            photoURL,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        if (!isPermissionDeniedError(error)) {
+          throw error;
+        }
+      }
+
+      const currentDetails = window.sakuraCurrentUserSnapshot
+        ? buildUserDetailsFromSnapshot(user, window.sakuraCurrentUserSnapshot)
+        : buildFallbackUserDetails(user);
+
+      return publishUserSnapshot(
+        toUserSnapshot(user, {
+          ...currentDetails,
+          photoURL,
+        })
+      );
+    };
+
     window.sakuraFirebaseAuth = {
       register: async ({ login, email, password }) => {
         const credentials = await createUserWithEmailAndPassword(auth, email, password);
@@ -609,6 +701,7 @@ const firebaseModuleScript = `
         return snapshot;
       },
       loginWithGoogle,
+      updateAvatar,
       syncPresence: async (options = {}) => {
         const user = auth.currentUser;
 

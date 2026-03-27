@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 type FirebaseClientConfig = {
   apiKey: string;
@@ -53,6 +53,7 @@ type FirebaseAuthBridge = {
     email: string;
     password: string;
   }) => Promise<AuthUserSnapshot | null>;
+  updateAvatar: (file: File) => Promise<AuthUserSnapshot | null>;
   syncPresence: (options?: {
     path?: string;
     source?: string;
@@ -120,12 +121,43 @@ function buildPrimaryName(user: AuthUserSnapshot) {
   return user.displayName?.trim() || user.login?.trim() || "Sakura User";
 }
 
+function getAvatarUploadErrorMessage(error: unknown) {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+
+  switch (code) {
+    case "storage/unsupported-file-type":
+      return "Загрузите PNG, JPG, WEBP или GIF.";
+    case "storage/file-too-large":
+      return "Файл должен быть не больше 5 МБ.";
+    case "storage/invalid-file":
+      return "Сначала выберите изображение.";
+    case "storage/unauthorized":
+    case "permission-denied":
+      return "Firebase Storage или Firestore не разрешают сохранить аватар. Проверьте rules.";
+    case "auth/no-current-user":
+      return "Сессия истекла. Войдите снова и повторите загрузку.";
+    default:
+      if (error instanceof Error && error.message) {
+        return error.message;
+      }
+
+      return "Не удалось загрузить аватар. Попробуйте ещё раз.";
+  }
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
   const [authLoadError, setAuthLoadError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUserSnapshot | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isAvatarUploading, setIsAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const currentUserId = currentUser?.uid ?? null;
 
   useEffect(() => {
@@ -256,6 +288,40 @@ export default function ProfilePage() {
       router.push("/");
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const openAvatarPicker = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!window.sakuraFirebaseAuth) {
+      setAvatarError(
+        window.sakuraFirebaseAuthError ??
+          "Firebase Auth ещё не готов. Подождите пару секунд и попробуйте снова."
+      );
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarSuccess(null);
+    setIsAvatarUploading(true);
+
+    try {
+      await window.sakuraFirebaseAuth.updateAvatar(file);
+      setAvatarSuccess("Аватар сохранён.");
+    } catch (error) {
+      setAvatarError(getAvatarUploadErrorMessage(error));
+    } finally {
+      setIsAvatarUploading(false);
     }
   };
 
@@ -480,7 +546,8 @@ export default function ProfilePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">
                   Avatar
                 </p>
-                <div className="mt-5 flex items-center gap-4 rounded-[24px] border border-[#1d1d1d] bg-[#090909] p-4">
+                <div className="mt-5 rounded-[24px] border border-[#1d1d1d] bg-[#090909] p-4">
+                  <div className="flex items-center gap-4">
                   {currentUser.photoURL ? (
                     <img
                       src={currentUser.photoURL}
@@ -492,15 +559,46 @@ export default function ProfilePage() {
                       {userInitials}
                     </div>
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-white">{avatarMode}</p>
                     <p className="mt-1 text-xs leading-relaxed text-gray-400">
                       {currentUser.photoURL
                         ? "Используется загруженный аватар аккаунта."
                         : "Если у пользователя нет фото, показываются инициалы как fallback-аватар."}
                     </p>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={openAvatarPicker}
+                        disabled={isAvatarUploading}
+                        className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isAvatarUploading
+                          ? "Uploading..."
+                          : currentUser.photoURL
+                            ? "Replace Avatar"
+                            : "Upload Avatar"}
+                      </button>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-gray-600">
+                        PNG / JPG / WEBP / GIF - up to 5 MB
+                      </span>
+                    </div>
+                    {avatarError ? (
+                      <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{avatarError}</p>
+                    ) : null}
+                    {avatarSuccess ? (
+                      <p className="mt-3 text-xs leading-relaxed text-[#8ce5b2]">{avatarSuccess}</p>
+                    ) : null}
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
                   </div>
                 </div>
+              </div>
               </div>
 
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
