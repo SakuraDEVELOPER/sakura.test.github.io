@@ -290,7 +290,7 @@ const firebaseModuleScript = `
       : ["user"];
   };
 
-  const ROLE_MANAGER_NAMES = new Set(["root", "super administrator", "co-owner"]);
+  const ROLE_MANAGER_NAMES = new Set(["root"]);
   const canManageRoles = (roles) =>
     normalizeRoles(roles).some((role) => ROLE_MANAGER_NAMES.has(normalizeRoleName(role)));
 
@@ -1055,7 +1055,7 @@ const firebaseModuleScript = `
       if (!canManageRoles(window.sakuraCurrentUserSnapshot?.roles ?? [])) {
         throw createFirebaseError(
           "roles/forbidden",
-          "Only root, super administrator, or co-owner can manage user roles."
+          "Only root can manage user roles."
         );
       }
 

@@ -42,7 +42,7 @@ const AUTH_ERROR_EVENT = "sakura-auth-error";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v6";
+const PROFILE_BUILD_MARKER = "role-colors-v7";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -202,7 +202,7 @@ const roleBadgeStyle = (role: string): CSSProperties => {
     boxShadow: "0 0 18px rgba(34,197,94,0.22)",
   };
 };
-const ROLE_MANAGER_NAMES = new Set(["root", "super administrator", "co-owner"]);
+const ROLE_MANAGER_NAMES = new Set(["root"]);
 const EDITABLE_ROLE_OPTIONS = [
   "root",
   "super administrator",
@@ -552,7 +552,7 @@ export default function ProfilePage() {
                     <h1 className="mt-3 truncate text-3xl font-black uppercase tracking-tighter text-white">{primaryName}</h1>
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${activeProfile.presence?.isOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{activeProfile.presence?.isOnline ? "Online" : "Offline"}</span>
-                      {profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-3 py-1 text-[10px] font-bold">{roleBadgeLabel(role)}</span>)}
+                      {profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex shrink-0 whitespace-nowrap rounded-full border px-3 py-1 text-[10px] font-bold">{roleBadgeLabel(role)}</span>)}
                     </div>
                   </div>
                 </div>
@@ -569,16 +569,16 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6">
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Roles</p>
-                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-4 py-2 text-[11px] font-bold">{roleBadgeLabel(role)}</span>)}</div>
+                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold">{roleBadgeLabel(role)}</span>)}</div>
               </div>
 
               {canManageRoleAssignments && activeProfile?.profileId ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Role Access</p>
-                <p className="mt-3 text-xs leading-relaxed text-gray-400">You can add or remove roles for this profile. Root, super administrator, and co-owner accounts can save changes.</p>
+                <p className="mt-3 text-xs leading-relaxed text-gray-400">You can add or remove roles for this profile. Only root accounts can save changes.</p>
                 <div className="mt-5 flex flex-wrap gap-3">{EDITABLE_ROLE_OPTIONS.map((role) => {
                   const isSelected = draftRoles.some((draftRole) => normalizeRoleName(draftRole) === normalizeRoleName(role));
 
-                  return <button key={role} type="button" onClick={() => toggleRole(role)} className={`inline-flex rounded-full border px-4 py-2 text-[11px] font-bold tracking-[0.14em] transition ${isSelected ? "" : "opacity-70 hover:opacity-100"}`} style={isSelected ? { ...roleBadgeStyle(role), ...roleBadgeTextStyle } : { ...roleBadgeTextStyle, borderColor: "#2c2c2c", backgroundColor: "#101010", color: "#9ca3af", boxShadow: "none" }}>{roleBadgeLabel(role)}</button>;
+                  return <button key={role} type="button" onClick={() => toggleRole(role)} className={`inline-flex shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold tracking-[0.14em] transition ${isSelected ? "" : "opacity-70 hover:opacity-100"}`} style={isSelected ? { ...roleBadgeStyle(role), ...roleBadgeTextStyle } : { ...roleBadgeTextStyle, borderColor: "#2c2c2c", backgroundColor: "#101010", color: "#9ca3af", boxShadow: "none" }}>{roleBadgeLabel(role)}</button>;
                 })}</div>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button type="button" onClick={handleRolesSave} disabled={isRolesSaving || !hasRoleChanges} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isRolesSaving ? "Saving..." : "Save Roles"}</button>
