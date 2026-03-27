@@ -42,6 +42,7 @@ const firebaseModuleScript = `
   const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
   const AVATAR_INLINE_SIZE = 160;
   const AVATAR_EXPORT_QUALITY = 0.72;
+  const PROFILE_LOOKUP_TIMEOUT_MS = 5000;
   const USER_UPDATE_EVENT = "sakura-user-update";
   const AVATAR_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
   const LOGIN_PATTERN = /^[A-Za-zА-Яа-яЁё0-9._-]+$/;
@@ -57,6 +58,24 @@ const firebaseModuleScript = `
 
   const resolvePhotoURL = (details, fallbackPhotoURL = null) =>
     hasOwn(details, "photoURL") ? details.photoURL ?? null : fallbackPhotoURL ?? null;
+
+  const withTimeout = (promise, timeoutMs, createTimeoutError) =>
+    new Promise((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        reject(createTimeoutError());
+      }, timeoutMs);
+
+      promise.then(
+        (value) => {
+          window.clearTimeout(timeoutId);
+          resolve(value);
+        },
+        (error) => {
+          window.clearTimeout(timeoutId);
+          reject(error);
+        }
+      );
+    });
 
   const readFileAsDataUrl = (file) =>
     new Promise((resolve, reject) => {
@@ -723,7 +742,15 @@ const firebaseModuleScript = `
         return window.sakuraCurrentUserSnapshot;
       }
 
-      const profileDoc = await findUserByProfileId(profileId);
+      const profileDoc = await withTimeout(
+        findUserByProfileId(profileId),
+        PROFILE_LOOKUP_TIMEOUT_MS,
+        () =>
+          createFirebaseError(
+            "profile/load-timeout",
+            "Profile loading took too long. Refresh the page and try again."
+          )
+      );
 
       if (!profileDoc) {
         return null;
