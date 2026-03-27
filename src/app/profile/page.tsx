@@ -78,18 +78,37 @@ const formatTime = (value: string | null) =>
     ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
     : "Not available";
 const normalizeRoleName = (role: string) => {
-  const normalizedRole = role.trim().toLowerCase();
+  const normalizedRole = role.trim().toLowerCase().replace(/\s+/g, " ");
+  const compactRole = normalizedRole.replace(/[\s_-]+/g, "");
 
-  if (normalizedRole === "admin") {
+  if (compactRole === "admin" || compactRole === "administrator") {
     return "administrator";
   }
 
-  if (normalizedRole === "r00t") {
+  if (
+    compactRole === "root" ||
+    compactRole === "r00t" ||
+    compactRole === "superadministrator" ||
+    compactRole === "superadmin" ||
+    compactRole === "owner"
+  ) {
     return "root";
   }
 
-  if (normalizedRole === "super administrator") {
-    return "root";
+  if (compactRole === "moderator") {
+    return "moderator";
+  }
+
+  if (compactRole === "tester") {
+    return "tester";
+  }
+
+  if (compactRole === "subscriber") {
+    return "subscriber";
+  }
+
+  if (compactRole === "user") {
+    return "user";
   }
 
   return normalizedRole;
