@@ -42,7 +42,7 @@ const AUTH_ERROR_EVENT = "sakura-auth-error";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v10";
+const PROFILE_BUILD_MARKER = "role-colors-v11";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -195,17 +195,12 @@ const roleDisplayLabel = (role: string) => {
     .join("");
 };
 const roleBadgeLabel = (role: string) => roleDisplayLabel(role);
-const renderRoleBadgeText = (role: string) =>
-  roleBadgeLabel(role).split("").map((character, index) =>
-    character === " "
-      ? <span key={`space-${index}`} className="inline-block w-[0.36em]" aria-hidden="true" />
-      : <span key={`${character}-${index}`} className="inline-block">{character}</span>
-  );
+const renderRoleBadgeText = (role: string) => roleBadgeLabel(role);
 const roleBadgeTextStyle: CSSProperties = {
-  fontFamily: "Verdana, Arial, sans-serif",
-  fontVariantLigatures: "none",
-  fontFeatureSettings: "\"liga\" 0, \"calt\" 0",
-  letterSpacing: "0.04em",
+  fontFamily: "\"Segoe UI\", Arial, sans-serif",
+  fontKerning: "none",
+  letterSpacing: "0",
+  lineHeight: 1.1,
   textTransform: "none",
   whiteSpace: "nowrap",
 };
