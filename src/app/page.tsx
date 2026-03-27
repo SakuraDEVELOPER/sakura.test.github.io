@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
@@ -81,6 +82,10 @@ type AuthUserSnapshot = {
   uid: string;
   email: string | null;
   displayName: string | null;
+  photoURL: string | null;
+  providerIds: string[];
+  creationTime: string | null;
+  lastSignInTime: string | null;
 };
 
 type FirebaseAuthBridge = {
@@ -212,6 +217,7 @@ function SakuraBackground() {
       await window.sakuraFirebaseAuth.loginWithGoogle();
       setFlashMessage("Вход через Google выполнен.");
       closeModal();
+      router.push("/profile");
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
     } finally {
@@ -253,6 +259,7 @@ function SakuraBackground() {
 }
 
 function HeaderAuth() {
+  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -417,6 +424,7 @@ function HeaderAuth() {
       }
 
       closeModal();
+      router.push("/profile");
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
     } finally {
@@ -459,6 +467,7 @@ function HeaderAuth() {
       await window.sakuraFirebaseAuth.loginWithGoogle();
       setFlashMessage("Вход через Google выполнен.");
       closeModal();
+      router.push("/profile");
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
     } finally {
@@ -470,6 +479,12 @@ function HeaderAuth() {
     <>
       {currentUser ? (
         <>
+          <Link
+            href="/profile"
+            className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white"
+          >
+            Profile
+          </Link>
           <div className="hidden items-center gap-2 rounded-full border border-[#1f3b2f] bg-[#0d1713] px-4 py-2 sm:flex">
             <span className="h-2 w-2 rounded-full bg-[#8ce5b2] shadow-[0_0_12px_rgba(140,229,178,0.55)]"></span>
             <span className="max-w-[210px] truncate text-[11px] text-[#cfe9dc]">

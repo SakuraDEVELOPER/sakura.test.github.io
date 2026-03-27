@@ -29,7 +29,13 @@ const firebaseModuleScript = `
       ? {
           uid: user.uid,
           email: user.email ?? null,
-          displayName: user.displayName ?? null
+          displayName: user.displayName ?? null,
+          photoURL: user.photoURL ?? null,
+          providerIds: user.providerData
+            .map((provider) => provider?.providerId)
+            .filter(Boolean),
+          creationTime: user.metadata.creationTime ?? null,
+          lastSignInTime: user.metadata.lastSignInTime ?? null
         }
       : null;
 
