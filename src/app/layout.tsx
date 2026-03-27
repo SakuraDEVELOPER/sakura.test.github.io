@@ -6,27 +6,30 @@ const firebaseModuleScript = `
   import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import {
     createUserWithEmailAndPassword,
+    GoogleAuthProvider,
     getAuth,
     onAuthStateChanged,
+    signInWithPopup,
     signInWithEmailAndPassword,
     signOut
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyAnZQt5NWXGOWuz3STh_vy-dSENVBM9_ZY",
+    apiKey: "AIzaSyAnZQt5NMXGOMuz3STh_vy-dSENVM9_ZY",
     authDomain: "sakura-bfa74.firebaseapp.com",
     projectId: "sakura-bfa74",
     storageBucket: "sakura-bfa74.firebasestorage.app",
     messagingSenderId: "145336250722",
     appId: "1:145336250722:web:d31610ae8258c398e47c3b",
-    measurementId: "G-1V07L6BRL0"
+    measurementId: "G-1V87L6BRL0"
   };
 
   const toUserSnapshot = (user) =>
     user
       ? {
           uid: user.uid,
-          email: user.email ?? null
+          email: user.email ?? null,
+          displayName: user.displayName ?? null
         }
       : null;
 
@@ -35,6 +38,12 @@ const firebaseModuleScript = `
   try {
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    const loginWithGoogle = async () => {
+      const result = await signInWithPopup(auth, provider);
+      return toUserSnapshot(result.user);
+    };
 
     window.sakuraFirebaseAuth = {
       register: async (email, password) => {
@@ -45,12 +54,14 @@ const firebaseModuleScript = `
         const credentials = await signInWithEmailAndPassword(auth, email, password);
         return toUserSnapshot(credentials.user);
       },
+      loginWithGoogle,
       logout: async () => {
         await signOut(auth);
       },
       onAuthStateChanged: (callback) =>
         onAuthStateChanged(auth, (user) => callback(toUserSnapshot(user)))
     };
+    window.loginWithGoogle = loginWithGoogle;
 
     window.dispatchEvent(new CustomEvent("sakura-auth-ready"));
   } catch (error) {

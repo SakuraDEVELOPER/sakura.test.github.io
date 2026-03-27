@@ -80,10 +80,12 @@ type AuthMode = "login" | "register";
 type AuthUserSnapshot = {
   uid: string;
   email: string | null;
+  displayName: string | null;
 };
 
 type FirebaseAuthBridge = {
   login: (email: string, password: string) => Promise<AuthUserSnapshot | null>;
+  loginWithGoogle: () => Promise<AuthUserSnapshot | null>;
   register: (email: string, password: string) => Promise<AuthUserSnapshot | null>;
   logout: () => Promise<void>;
   onAuthStateChanged: (callback: (user: AuthUserSnapshot | null) => void) => () => void;
@@ -92,6 +94,7 @@ type FirebaseAuthBridge = {
 declare global {
   interface Window {
     firebaseConfig?: FirebaseClientConfig;
+    loginWithGoogle?: () => Promise<AuthUserSnapshot | null>;
     sakuraFirebaseAuth?: FirebaseAuthBridge;
     sakuraFirebaseAuthError?: string;
   }
@@ -123,6 +126,16 @@ function getFirebaseErrorMessage(error: unknown) {
       return "Не удалось подключиться к Firebase. Проверьте интернет.";
     case "auth/operation-not-allowed":
       return "Email/password вход не включен в настройках Firebase Auth.";
+    case "auth/popup-closed-by-user":
+      return "Окно входа через Google было закрыто.";
+    case "auth/popup-blocked":
+      return "Браузер заблокировал pop-up. Разрешите всплывающие окна.";
+    case "auth/cancelled-popup-request":
+      return "Запрос на вход через Google был отменен.";
+    case "auth/unauthorized-domain":
+      return "Текущий домен не добавлен в список разрешенных в Firebase.";
+    case "auth/account-exists-with-different-credential":
+      return "Для этого email уже используется другой способ входа.";
     default:
       if (error instanceof Error && error.message) {
         return error.message;
@@ -184,6 +197,29 @@ function scrollToSection(sectionId: string) {
 }
 
 function SakuraBackground() {
+  /* const handleGoogleLogin = async () => {
+    if (!window.sakuraFirebaseAuth) {
+      setSubmitError(
+        authLoadError ?? "Firebase Auth еще не готов. Подождите пару секунд и попробуйте снова."
+      );
+      return;
+    }
+
+    setIsGoogleSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await window.sakuraFirebaseAuth.loginWithGoogle();
+      setFlashMessage("Вход через Google выполнен.");
+      closeModal();
+    } catch (error) {
+      setSubmitError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
+
+  */
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
       {sakuraLeaves.map((leaf) => (
@@ -228,6 +264,7 @@ function HeaderAuth() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [flashMessage, setFlashMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -407,6 +444,28 @@ function HeaderAuth() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    if (!window.sakuraFirebaseAuth) {
+      setSubmitError(
+        authLoadError ?? "Firebase Auth еще не готов. Подождите пару секунд и попробуйте снова."
+      );
+      return;
+    }
+
+    setIsGoogleSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await window.sakuraFirebaseAuth.loginWithGoogle();
+      setFlashMessage("Вход через Google выполнен.");
+      closeModal();
+    } catch (error) {
+      setSubmitError(getFirebaseErrorMessage(error));
+    } finally {
+      setIsGoogleSubmitting(false);
+    }
+  };
+
   return (
     <>
       {currentUser ? (
@@ -414,7 +473,7 @@ function HeaderAuth() {
           <div className="hidden items-center gap-2 rounded-full border border-[#1f3b2f] bg-[#0d1713] px-4 py-2 sm:flex">
             <span className="h-2 w-2 rounded-full bg-[#8ce5b2] shadow-[0_0_12px_rgba(140,229,178,0.55)]"></span>
             <span className="max-w-[210px] truncate text-[11px] text-[#cfe9dc]">
-              {currentUser.email ?? "Signed in"}
+              {currentUser.displayName ?? currentUser.email ?? "Signed in"}
             </span>
           </div>
           <button
@@ -529,6 +588,29 @@ function HeaderAuth() {
                   {authLoadError}
                 </div>
               ) : null}
+
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={!authReady || isGoogleSubmitting}
+                className="mt-5 inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-[#ffb7c5] bg-[#1a1a1a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#252525] hover:shadow-[0_0_15px_#ffb7c5] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  width="18"
+                  height="18"
+                  alt="Google"
+                />
+                <span>{isGoogleSubmitting ? "Connecting Google..." : "Войти через Google"}</span>
+              </button>
+
+              <div className="mt-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#1f1f1f]"></div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-600">
+                  or
+                </span>
+                <div className="h-px flex-1 bg-[#1f1f1f]"></div>
+              </div>
 
               <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
                 <label className="block">
