@@ -41,7 +41,7 @@ const AUTH_ERROR_EVENT = "sakura-auth-error";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v4";
+const PROFILE_BUILD_MARKER = "role-colors-v5";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -129,8 +129,12 @@ const formatRole = (role: string) => {
 };
 const roleBadgeLabel = (role: string) => formatRole(role).toUpperCase();
 const roleBadgeTextStyle: CSSProperties = {
+  fontFamily: "\"Segoe UI\", Arial, sans-serif",
   fontVariantLigatures: "none",
   fontFeatureSettings: "\"liga\" 0, \"calt\" 0",
+  letterSpacing: "0.14em",
+  textTransform: "none",
+  whiteSpace: "nowrap",
 };
 const roleBadgeStyle = (role: string): CSSProperties => {
   const normalizedRole = normalizeRoleName(role);
@@ -433,7 +437,7 @@ export default function ProfilePage() {
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <span className="inline-flex rounded-full border border-[#2b1b1e] bg-[#1a1012] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffb7c5]">{activeProfile.login ? `@${activeProfile.login}` : "login pending"}</span>
                       <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${activeProfile.presence?.isOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{activeProfile.presence?.isOnline ? "Online" : "Offline"}</span>
-                      {profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-3 py-1 font-mono text-[10px] font-bold tracking-[0.18em]">{roleBadgeLabel(role)}</span>)}
+                      {profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-3 py-1 text-[10px] font-bold">{roleBadgeLabel(role)}</span>)}
                     </div>
                   </div>
                 </div>
@@ -451,7 +455,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6">
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Roles</p>
-                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-4 py-2 font-mono text-[11px] font-bold tracking-[0.18em]">{roleBadgeLabel(role)}</span>)}</div>
+                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex rounded-full border px-4 py-2 text-[11px] font-bold">{roleBadgeLabel(role)}</span>)}</div>
               </div>
 
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
