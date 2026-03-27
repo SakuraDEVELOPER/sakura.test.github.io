@@ -204,12 +204,26 @@ const firebaseModuleScript = `
   const getProviderIds = (user) =>
     user.providerData.map((providerData) => providerData?.providerId).filter(Boolean);
 
+  const normalizeRoleName = (role) => {
+    const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
+
+    if (!normalizedRole) {
+      return "";
+    }
+
+    if (normalizedRole === "admin") {
+      return "administrator";
+    }
+
+    return normalizedRole;
+  };
+
   const normalizeRoles = (roles) => {
     const nextRoles = Array.isArray(roles)
       ? roles
-          .filter((role) => typeof role === "string")
-          .map((role) => role.trim().toLowerCase())
-          .filter(Boolean)
+        .filter((role) => typeof role === "string")
+        .map(normalizeRoleName)
+        .filter(Boolean)
       : [];
 
     return nextRoles.length ? [...new Set(nextRoles)] : ["user"];

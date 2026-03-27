@@ -77,12 +77,56 @@ const formatTime = (value: string | null) =>
     : "Not available";
 const formatProvider = (providerId: string) =>
   providerId === "password" ? "Email / Password" : providerId === "google.com" ? "Google" : providerId;
-const formatRole = (role: string) =>
-  role
+const normalizeRoleName = (role: string) => {
+  const normalizedRole = role.trim().toLowerCase();
+
+  if (normalizedRole === "admin") {
+    return "administrator";
+  }
+
+  return normalizedRole;
+};
+const formatRole = (role: string) => {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (normalizedRole === "root") return "Root";
+  if (normalizedRole === "administrator") return "Administrator";
+  if (normalizedRole === "moderator") return "Moderator";
+  if (normalizedRole === "tester") return "Tester";
+  if (normalizedRole === "subscriber") return "Subscriber";
+  if (normalizedRole === "user") return "User";
+
+  return normalizedRole
     .split(/[\s_-]+/)
     .filter(Boolean)
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
+};
+const roleBadgeClass = (role: string) => {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (normalizedRole === "root") {
+    return "border-[#7a1f27] bg-[#17090d] text-[#ff8f9d]";
+  }
+
+  if (normalizedRole === "administrator") {
+    return "border-[#2c5b8f] bg-[#0d1725] text-[#92c6ff]";
+  }
+
+  if (normalizedRole === "moderator") {
+    return "border-[#5a4693] bg-[#151126] text-[#c7b8ff]";
+  }
+
+  if (normalizedRole === "tester") {
+    return "border-[#b9b9b9] bg-[#161616] text-[#f4f4f4]";
+  }
+
+  if (normalizedRole === "subscriber") {
+    return "border-[#8c6a18] bg-[#171208] text-[#ffd86f]";
+  }
+
+  return "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]";
+};
 const nameOf = (user: UserProfile) => user.displayName?.trim() || user.login?.trim() || "Sakura User";
 const initialsOf = (user: UserProfile) =>
   (user.displayName || user.login || user.email || "SA")
@@ -318,9 +362,8 @@ export default function ProfilePage() {
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <span className="inline-flex rounded-full border border-[#2b1b1e] bg-[#1a1012] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffb7c5]">{activeProfile.login ? `@${activeProfile.login}` : "login pending"}</span>
                       <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${activeProfile.presence?.isOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{activeProfile.presence?.isOnline ? "Online" : "Offline"}</span>
-                      {profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${role === "admin" ? "border-[#8b6b2b] bg-[#17120a] text-[#ffd88a]" : role === "moderator" ? "border-[#2c3f56] bg-[#101826] text-[#9fcbff]" : "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]"}`}>{formatRole(role)}</span>)}
+                      {profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${roleBadgeClass(role)}`}>{formatRole(role)}</span>)}
                     </div>
-                    <p className="mt-3 break-all text-sm leading-relaxed text-gray-400">{activeProfile.email ?? "Email not provided"}</p>
                   </div>
                 </div>
               </div>
@@ -340,7 +383,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6">
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Roles</p>
-                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] ${role === "admin" ? "border-[#8b6b2b] bg-[#17120a] text-[#ffd88a]" : role === "moderator" ? "border-[#2c3f56] bg-[#101826] text-[#9fcbff]" : "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]"}`}>{formatRole(role)}</span>)}</div>
+                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] ${roleBadgeClass(role)}`}>{formatRole(role)}</span>)}</div>
               </div>
 
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
