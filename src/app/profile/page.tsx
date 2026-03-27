@@ -77,6 +77,14 @@ const getInitialBootstrap = () => {
   const currentUser = getInitialCurrentUser();
   const requestedProfileId = getInitialRequestedProfileId();
 
+  if (
+    typeof window !== "undefined" &&
+    requestedProfileId !== null &&
+    window.location.pathname !== profilePath(requestedProfileId)
+  ) {
+    window.history.replaceState(null, "", profilePath(requestedProfileId));
+  }
+
   return {
     authReady: typeof window !== "undefined" && Boolean(getWindowState().sakuraFirebaseAuth),
     authError: typeof window === "undefined" ? null : getWindowState().sakuraFirebaseAuthError ?? null,
