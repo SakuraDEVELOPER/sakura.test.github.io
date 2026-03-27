@@ -20,6 +20,7 @@ type AuthUserSnapshot = {
   uid: string;
   email: string | null;
   displayName: string | null;
+  profileId: number | null;
   photoURL: string | null;
   providerIds: string[];
   creationTime: string | null;
@@ -44,6 +45,8 @@ declare global {
 
 const AUTH_READY_EVENT = "sakura-auth-ready";
 const AUTH_ERROR_EVENT = "sakura-auth-error";
+const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
+const repoBasePath = "/sakura.github.io";
 
 function formatProvider(providerId: string) {
   switch (providerId) {
@@ -145,6 +148,23 @@ export default function ProfilePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || !currentUser?.profileId) {
+      return;
+    }
+
+    const fallbackPath = window.sessionStorage.getItem(PROFILE_PATH_STORAGE_KEY);
+    const desiredPath = `${repoBasePath}/profile/${currentUser.profileId}`;
+
+    if (fallbackPath) {
+      window.sessionStorage.removeItem(PROFILE_PATH_STORAGE_KEY);
+    }
+
+    if (window.location.pathname !== desiredPath) {
+      window.history.replaceState(null, "", desiredPath);
+    }
+  }, [currentUser?.profileId]);
+
   const handleLogout = async () => {
     if (!window.sakuraFirebaseAuth) {
       setAuthLoadError(
@@ -170,6 +190,7 @@ export default function ProfilePage() {
 
   const userInitials = currentUser ? buildInitials(currentUser) : "SA";
   const projectId = typeof window !== "undefined" ? window.firebaseConfig?.projectId : "sakura-bfa74";
+  const profileLabel = currentUser?.profileId ? `Profile #${currentUser.profileId}` : "Profile";
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.14),transparent_35%),linear-gradient(180deg,#090909_0%,#040404_100%)] px-5 py-8 text-white sm:px-8">
@@ -180,7 +201,7 @@ export default function ProfilePage() {
               Sakura Account
             </p>
             <h1 className="mt-2 text-3xl font-black uppercase tracking-tighter text-white">
-              Profile
+              {profileLabel}
             </h1>
           </div>
 
@@ -305,12 +326,21 @@ export default function ProfilePage() {
 
               <div className="grid gap-4 px-8 py-8 sm:grid-cols-2">
                 <div className="rounded-[26px] border border-[#1d1d1d] bg-[#090909] p-5">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gray-600">
-                    User ID
-                  </p>
-                  <p className="mt-3 break-all text-sm leading-relaxed text-gray-300">
-                    {currentUser.uid}
-                  </p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gray-600">
+                      Profile ID
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-gray-300">
+                      {currentUser.profileId ?? "Not assigned"}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[26px] border border-[#1d1d1d] bg-[#090909] p-5">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gray-600">
+                      User ID
+                    </p>
+                    <p className="mt-3 break-all text-sm leading-relaxed text-gray-300">
+                      {currentUser.uid}
+                    </p>
                 </div>
 
                 <div className="rounded-[26px] border border-[#1d1d1d] bg-[#090909] p-5">

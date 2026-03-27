@@ -82,6 +82,7 @@ type AuthUserSnapshot = {
   uid: string;
   email: string | null;
   displayName: string | null;
+  profileId: number | null;
   photoURL: string | null;
   providerIds: string[];
   creationTime: string | null;
@@ -483,7 +484,7 @@ function HeaderAuth() {
             href="/profile"
             className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white"
           >
-            Profile
+            {currentUser.profileId ? `Profile #${currentUser.profileId}` : "Profile"}
           </Link>
           <div className="hidden items-center gap-2 rounded-full border border-[#1f3b2f] bg-[#0d1713] px-4 py-2 sm:flex">
             <span className="h-2 w-2 rounded-full bg-[#8ce5b2] shadow-[0_0_12px_rgba(140,229,178,0.55)]"></span>

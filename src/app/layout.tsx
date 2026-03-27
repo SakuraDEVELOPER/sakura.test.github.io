@@ -13,6 +13,13 @@ const firebaseModuleScript = `
     signInWithEmailAndPassword,
     signOut
   } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import {
+    doc,
+    getDoc,
+    getFirestore,
+    runTransaction,
+    setDoc
+  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyAnZQt5NWXGOWuz3STh_vy-dSENVBM9_ZY",
@@ -24,12 +31,13 @@ const firebaseModuleScript = `
     measurementId: "G-1V07L6BRL0"
   };
 
-  const toUserSnapshot = (user) =>
+  const toUserSnapshot = (user, profileId = null) =>
     user
       ? {
           uid: user.uid,
           email: user.email ?? null,
           displayName: user.displayName ?? null,
+          profileId,
           photoURL: user.photoURL ?? null,
           providerIds: user.providerData
             .map((provider) => provider?.providerId)
@@ -44,28 +52,106 @@ const firebaseModuleScript = `
   try {
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
+
+    const userRefFor = (uid) => doc(db, "users", uid);
+    const countersRef = doc(db, "meta", "counters");
+
+    const ensureProfileRecord = async (user) => {
+      const userRef = userRefFor(user.uid);
+      const userSnapshot = await getDoc(userRef);
+      const existingData = userSnapshot.exists() ? userSnapshot.data() : null;
+      const existingProfileId =
+        typeof existingData?.profileId === "number" ? existingData.profileId : null;
+
+      const writeProfileData = async (profileId) => {
+        await setDoc(
+          userRef,
+          {
+            uid: user.uid,
+            email: user.email ?? null,
+            displayName: user.displayName ?? null,
+            photoURL: user.photoURL ?? null,
+            providerIds: user.providerData
+              .map((providerData) => providerData?.providerId)
+              .filter(Boolean),
+            profileId,
+            creationTime: user.metadata.creationTime ?? null,
+            lastSignInTime: user.metadata.lastSignInTime ?? null,
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+
+        return profileId;
+      };
+
+      if (existingProfileId !== null) {
+        return writeProfileData(existingProfileId);
+      }
+
+      const nextProfileId = await runTransaction(db, async (transaction) => {
+        const countersSnapshot = await transaction.get(countersRef);
+        const currentCount =
+          countersSnapshot.exists() && typeof countersSnapshot.data()?.profileCount === "number"
+            ? countersSnapshot.data().profileCount
+            : 0;
+        const profileId = currentCount + 1;
+
+        transaction.set(countersRef, { profileCount: profileId }, { merge: true });
+        transaction.set(
+          userRef,
+          {
+            uid: user.uid,
+            email: user.email ?? null,
+            displayName: user.displayName ?? null,
+            photoURL: user.photoURL ?? null,
+            providerIds: user.providerData
+              .map((providerData) => providerData?.providerId)
+              .filter(Boolean),
+            profileId,
+            creationTime: user.metadata.creationTime ?? null,
+            lastSignInTime: user.metadata.lastSignInTime ?? null,
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+
+        return profileId;
+      });
+
+      return nextProfileId;
+    };
+
+    const resolveUserSnapshot = async (user) => {
+      const profileId = await ensureProfileRecord(user);
+
+      return toUserSnapshot(user, profileId);
+    };
 
     const loginWithGoogle = async () => {
       const result = await signInWithPopup(auth, provider);
-      return toUserSnapshot(result.user);
+      return resolveUserSnapshot(result.user);
     };
 
     window.sakuraFirebaseAuth = {
       register: async (email, password) => {
         const credentials = await createUserWithEmailAndPassword(auth, email, password);
-        return toUserSnapshot(credentials.user);
+        return resolveUserSnapshot(credentials.user);
       },
       login: async (email, password) => {
         const credentials = await signInWithEmailAndPassword(auth, email, password);
-        return toUserSnapshot(credentials.user);
+        return resolveUserSnapshot(credentials.user);
       },
       loginWithGoogle,
       logout: async () => {
         await signOut(auth);
       },
       onAuthStateChanged: (callback) =>
-        onAuthStateChanged(auth, (user) => callback(toUserSnapshot(user)))
+        onAuthStateChanged(auth, async (user) =>
+          callback(user ? await resolveUserSnapshot(user) : null)
+        )
     };
     window.loginWithGoogle = loginWithGoogle;
 
