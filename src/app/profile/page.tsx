@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } fro
 
 type UserProfile = {
   uid: string;
+  isAnonymous: boolean;
   email: string | null;
   login: string | null;
   displayName: string | null;
@@ -175,7 +176,9 @@ const getInitialRequestedProfileId = () => {
 const getInitialCurrentUser = () =>
   typeof window === "undefined" ? null : getWindowState().sakuraCurrentUserSnapshot ?? null;
 const getInitialProfile = (currentUser: UserProfile | null, requestedProfileId: number | null) =>
-  requestedProfileId === null || (currentUser?.profileId ?? null) === requestedProfileId ? currentUser : null;
+  currentUser && !currentUser.isAnonymous && (requestedProfileId === null || (currentUser.profileId ?? null) === requestedProfileId)
+    ? currentUser
+    : null;
 const getInitialBootstrap = () => {
   const currentUser = getInitialCurrentUser();
   const requestedProfileId = getInitialRequestedProfileId();
@@ -257,12 +260,13 @@ export default function ProfilePage() {
     if (typeof window === "undefined" || !authReady || authError) return;
     const runtime = getWindowState();
     const requestedId = requestedProfileId;
-    if (requestedId === null || currentUser?.profileId === requestedId) {
-      setProfile(currentUser);
+    const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
+    if (requestedId === null || visibleCurrentUser?.profileId === requestedId) {
+      setProfile(visibleCurrentUser);
       setProfileError(null);
       setIsProfileLoading(false);
-      if (currentUser?.profileId && requestedId === null && window.location.pathname !== profilePath(currentUser.profileId)) {
-        window.history.replaceState(null, "", profilePath(currentUser.profileId));
+      if (visibleCurrentUser?.profileId && requestedId === null && window.location.pathname !== profilePath(visibleCurrentUser.profileId)) {
+        window.history.replaceState(null, "", profilePath(visibleCurrentUser.profileId));
       }
       return;
     }
@@ -284,11 +288,12 @@ export default function ProfilePage() {
   }, [authReady, authError, currentUser, requestedProfileId]);
 
   useEffect(() => {
-    if (!currentUser?.uid || !getWindowState().sakuraFirebaseAuth) return;
+    if (!currentUser?.uid || currentUser.isAnonymous || !getWindowState().sakuraFirebaseAuth) return;
     getWindowState().sakuraFirebaseAuth?.syncPresence({ path: window.location.pathname, source: "profile-view", forceVisit: true }).catch(() => {});
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, currentUser?.isAnonymous]);
 
-  const isOwner = Boolean(currentUser && profile && currentUser.uid === profile.uid);
+  const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
+  const isOwner = Boolean(visibleCurrentUser && profile && visibleCurrentUser.uid === profile.uid);
   const activeProfile = profile;
   const profileRoles = activeProfile?.roles?.length ? activeProfile.roles : ["user"];
   const shouldShowPendingState =
@@ -374,8 +379,8 @@ export default function ProfilePage() {
       <div className="mx-auto max-w-6xl">
         <nav className="mb-8 flex flex-wrap items-center justify-end gap-3 rounded-[28px] border border-[#1b1b1b] bg-black/40 px-6 py-5 backdrop-blur-sm">
           <Link href="/" className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white">Home</Link>
-          {currentUser?.profileId && !isOwner ? <a href={profilePath(currentUser.profileId)} className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#1a1012] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">My Profile</a> : null}
-          {currentUser ? <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isLoggingOut ? "Logging out..." : "Logout"}</button> : null}
+          {visibleCurrentUser?.profileId && !isOwner ? <a href={profilePath(visibleCurrentUser.profileId)} className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#1a1012] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">My Profile</a> : null}
+          {visibleCurrentUser ? <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isLoggingOut ? "Logging out..." : "Logout"}</button> : null}
         </nav>
 
         {authError ? <section className="rounded-[32px] border border-red-400/20 bg-red-500/10 px-8 py-12"><p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Auth Error</p><p className="mt-4 text-sm leading-relaxed text-red-100/85">{authError}</p></section> : null}

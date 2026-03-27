@@ -10,6 +10,7 @@ const firebaseModuleScript = `
     GoogleAuthProvider,
     getAuth,
     onAuthStateChanged,
+    signInAnonymously,
     signInWithPopup,
     signInWithEmailAndPassword,
     signOut,
@@ -326,6 +327,7 @@ const firebaseModuleScript = `
     user
       ? {
           uid: user.uid,
+          isAnonymous: Boolean(user.isAnonymous),
           email: user.email ?? null,
           login: details.login ?? null,
           displayName: user.displayName ?? details.displayName ?? details.login ?? null,
@@ -346,6 +348,7 @@ const firebaseModuleScript = `
 
   const toStoredUserSnapshot = (uid, details = {}) => ({
     uid,
+    isAnonymous: false,
     email: typeof details.email === "string" ? details.email : null,
     login: typeof details.login === "string" ? details.login : null,
     displayName:
@@ -419,6 +422,39 @@ const firebaseModuleScript = `
       );
 
       return snapshot.empty ? null : snapshot.docs[0];
+    };
+
+    const toAnonymousViewerSnapshot = (user) => ({
+      uid: user.uid,
+      isAnonymous: true,
+      email: null,
+      login: null,
+      displayName: null,
+      profileId: null,
+      photoURL: null,
+      roles: [],
+      providerIds: ["anonymous"],
+      creationTime: user.metadata.creationTime ?? null,
+      lastSignInTime: user.metadata.lastSignInTime ?? null,
+      loginHistory: [],
+      visitHistory: [],
+      presence: null,
+    });
+
+    const ensureProfileViewer = async () => {
+      if (auth.currentUser) {
+        return auth.currentUser;
+      }
+
+      try {
+        const credentials = await signInAnonymously(auth);
+        return credentials.user;
+      } catch (error) {
+        throw createFirebaseError(
+          "profile/public-view-disabled",
+          "Public profile viewing is not enabled yet. Turn on Anonymous Auth or allow public read access in Firestore rules."
+        );
+      }
     };
 
     const resolveAvailableLogin = async (requestedLogin, currentUid = null, automatic = false) => {
@@ -781,20 +817,40 @@ const firebaseModuleScript = `
 
       if (
         window.sakuraCurrentUserSnapshot &&
+        !window.sakuraCurrentUserSnapshot.isAnonymous &&
         window.sakuraCurrentUserSnapshot.profileId === profileId
       ) {
         return window.sakuraCurrentUserSnapshot;
       }
 
-      const profileDoc = await withTimeout(
-        findUserByProfileId(profileId),
-        PROFILE_LOOKUP_TIMEOUT_MS,
-        () =>
-          createFirebaseError(
-            "profile/load-timeout",
-            "Profile loading took too long. Refresh the page and try again."
-          )
-      );
+      const viewer = await ensureProfileViewer();
+
+      if (viewer.isAnonymous) {
+        publishUserSnapshot(toAnonymousViewerSnapshot(viewer));
+      }
+
+      let profileDoc;
+
+      try {
+        profileDoc = await withTimeout(
+          findUserByProfileId(profileId),
+          PROFILE_LOOKUP_TIMEOUT_MS,
+          () =>
+            createFirebaseError(
+              "profile/load-timeout",
+              "Profile loading took too long. Refresh the page and try again."
+            )
+        );
+      } catch (error) {
+        if (isPermissionDeniedError(error)) {
+          throw createFirebaseError(
+            "profile/public-view-denied",
+            "Public profile viewing is blocked by Firestore rules. Allow anonymous users to read users collection."
+          );
+        }
+
+        throw error;
+      }
 
       if (!profileDoc) {
         return null;
@@ -974,6 +1030,11 @@ const firebaseModuleScript = `
 
           if (!user) {
             callback(publishUserSnapshot(null));
+            return;
+          }
+
+          if (user.isAnonymous) {
+            callback(publishUserSnapshot(toAnonymousViewerSnapshot(user)));
             return;
           }
 
