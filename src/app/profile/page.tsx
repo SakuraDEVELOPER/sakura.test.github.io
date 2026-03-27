@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties } from "react";
 
 type UserProfile = {
   uid: string;
@@ -100,30 +100,60 @@ const formatRole = (role: string) => {
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
 };
-const roleBadgeClass = (role: string) => {
+const roleBadgeStyle = (role: string): CSSProperties => {
   const normalizedRole = normalizeRoleName(role);
 
   if (normalizedRole === "root") {
-    return "border-[#ff4b5c] bg-[#1d0a0e] text-[#ffb8c0] shadow-[0_0_16px_rgba(255,75,92,0.18)]";
+    return {
+      borderColor: "#ff4b5c",
+      backgroundColor: "#1d0a0e",
+      color: "#ffb8c0",
+      boxShadow: "0 0 16px rgba(255,75,92,0.18)",
+    };
   }
 
   if (normalizedRole === "administrator") {
-    return "border-[#4a93ff] bg-[#091321] text-[#bedaff] shadow-[0_0_16px_rgba(74,147,255,0.18)]";
+    return {
+      borderColor: "#4a93ff",
+      backgroundColor: "#091321",
+      color: "#bedaff",
+      boxShadow: "0 0 16px rgba(74,147,255,0.18)",
+    };
   }
 
   if (normalizedRole === "moderator") {
-    return "border-[#8f6cff] bg-[#151028] text-[#ddd1ff] shadow-[0_0_16px_rgba(143,108,255,0.18)]";
+    return {
+      borderColor: "#8f6cff",
+      backgroundColor: "#151028",
+      color: "#ddd1ff",
+      boxShadow: "0 0 16px rgba(143,108,255,0.18)",
+    };
   }
 
   if (normalizedRole === "tester") {
-    return "border-[#f2f2f2] bg-[#151515] text-[#ffffff] shadow-[0_0_16px_rgba(255,255,255,0.12)]";
+    return {
+      borderColor: "#f2f2f2",
+      backgroundColor: "#151515",
+      color: "#ffffff",
+      boxShadow: "0 0 16px rgba(255,255,255,0.12)",
+    };
   }
 
   if (normalizedRole === "subscriber") {
-    return "border-[#f0c54c] bg-[#1a1406] text-[#ffe7a3] shadow-[0_0_16px_rgba(240,197,76,0.18)]";
+    return {
+      borderColor: "#f0c54c",
+      backgroundColor: "#1a1406",
+      color: "#ffe7a3",
+      boxShadow: "0 0 16px rgba(240,197,76,0.18)",
+    };
   }
 
-  return "border-[#43c980] bg-[#0b1711] text-[#b7f3cf] shadow-[0_0_16px_rgba(67,201,128,0.16)]";
+  return {
+    borderColor: "#43c980",
+    backgroundColor: "#0b1711",
+    color: "#b7f3cf",
+    boxShadow: "0 0 16px rgba(67,201,128,0.16)",
+  };
 };
 const nameOf = (user: UserProfile) => user.displayName?.trim() || user.login?.trim() || "Sakura User";
 const initialsOf = (user: UserProfile) =>
@@ -360,7 +390,7 @@ export default function ProfilePage() {
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <span className="inline-flex rounded-full border border-[#2b1b1e] bg-[#1a1012] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#ffb7c5]">{activeProfile.login ? `@${activeProfile.login}` : "login pending"}</span>
                       <span className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${activeProfile.presence?.isOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{activeProfile.presence?.isOnline ? "Online" : "Offline"}</span>
-                      {profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${roleBadgeClass(role)}`}>{formatRole(role)}</span>)}
+                      {profileRoles.map((role) => <span key={role} style={roleBadgeStyle(role)} className="inline-flex rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]">{formatRole(role)}</span>)}
                     </div>
                   </div>
                 </div>
@@ -378,7 +408,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-6">
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Roles</p>
-                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} className={`inline-flex rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] ${roleBadgeClass(role)}`}>{formatRole(role)}</span>)}</div>
+                <div className="mt-5 flex flex-wrap gap-3">{profileRoles.map((role) => <span key={role} style={roleBadgeStyle(role)} className="inline-flex rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em]">{formatRole(role)}</span>)}</div>
               </div>
 
               <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
