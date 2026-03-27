@@ -181,6 +181,10 @@ export default function ProfilePage() {
 
   const isOwner = Boolean(currentUser && profile && currentUser.uid === profile.uid);
   const activeProfile = profile;
+  const shouldShowPendingState =
+    !authError &&
+    !activeProfile &&
+    (!authReady || isProfileLoading || (requestedProfileId !== null && !profileError));
   const primaryName = activeProfile ? nameOf(activeProfile) : "Sakura User";
   const initials = activeProfile ? initialsOf(activeProfile) : "SA";
   const handleLogout = async () => {
@@ -241,7 +245,8 @@ export default function ProfilePage() {
         </nav>
 
         {authError ? <section className="rounded-[32px] border border-red-400/20 bg-red-500/10 px-8 py-12"><p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Auth Error</p><p className="mt-4 text-sm leading-relaxed text-red-100/85">{authError}</p></section> : null}
-        {authReady && !authError && !isProfileLoading && !activeProfile ? <section className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-8 py-12 shadow-[0_0_60px_rgba(255,183,197,0.06)]"><p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{requestedProfileId ? "Profile Missing" : "Guest State"}</p><p className="mt-4 text-sm leading-relaxed text-gray-400">{profileError ?? "Sign in or open a direct route like /profile/1."}</p></section> : null}
+        {shouldShowPendingState ? <section className="rounded-[32px] border border-[#181818] bg-[#090909]/85 px-6 py-5 shadow-[0_0_40px_rgba(255,183,197,0.04)]"><div className="flex items-center justify-between gap-4"><div><p className="font-mono text-[10px] uppercase tracking-[0.34em] text-[#ffb7c5]">Loading</p><p className="mt-2 text-sm text-gray-400">{requestedProfileId ? `Preparing profile #${requestedProfileId}...` : "Preparing profile..."}</p></div><div className="h-2 w-2 rounded-full bg-[#ffb7c5] animate-pulse"></div></div></section> : null}
+        {authReady && !authError && !isProfileLoading && !activeProfile && profileError ? <section className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-8 py-12 shadow-[0_0_60px_rgba(255,183,197,0.06)]"><p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{requestedProfileId ? "Profile Missing" : "Guest State"}</p><p className="mt-4 text-sm leading-relaxed text-gray-400">{profileError}</p></section> : null}
 
         {activeProfile ? (
           <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
