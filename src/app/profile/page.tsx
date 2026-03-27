@@ -424,8 +424,15 @@ export default function ProfilePage() {
     setRolesSuccess(null);
   }, [activeProfile, activeProfileRoleSignature]);
 
+  const normalizedDraftRoles = normalizeRoleSelection(draftRoles);
+  const availableRoleOptions = EDITABLE_ROLE_OPTIONS.filter(
+    (role) =>
+      !normalizedDraftRoles.some(
+        (draftRole) => normalizeRoleName(draftRole) === normalizeRoleName(role)
+      )
+  );
   const hasRoleChanges =
-    normalizeRoleSelection(draftRoles).join("|") !== normalizedProfileRoles.join("|");
+    normalizedDraftRoles.join("|") !== normalizedProfileRoles.join("|");
 
   const handleLogout = async () => {
     const bridge = getWindowState().sakuraFirebaseAuth;
@@ -475,24 +482,22 @@ export default function ProfilePage() {
     }
   };
 
-  const toggleRole = (role: string) => {
+  const addRole = (role: string) => {
+    setRolesError(null);
+    setRolesSuccess(null);
+    setDraftRoles((currentRoles) => normalizeRoleSelection([...currentRoles, role]));
+  };
+
+  const removeRole = (role: string) => {
     setRolesError(null);
     setRolesSuccess(null);
     setDraftRoles((currentRoles) => {
       const normalizedTarget = normalizeRoleName(role);
-      const hasRole = currentRoles.some(
-        (currentRole) => normalizeRoleName(currentRole) === normalizedTarget
+      const nextRoles = currentRoles.filter(
+        (currentRole) => normalizeRoleName(currentRole) !== normalizedTarget
       );
 
-      if (hasRole) {
-        const nextRoles = currentRoles.filter(
-          (currentRole) => normalizeRoleName(currentRole) !== normalizedTarget
-        );
-
-        return nextRoles.length ? nextRoles : ["user"];
-      }
-
-      return normalizeRoleSelection([...currentRoles, role]);
+      return nextRoles.length ? normalizeRoleSelection(nextRoles) : ["user"];
     });
   };
 
@@ -516,7 +521,7 @@ export default function ProfilePage() {
     try {
       const snapshot = await bridge.updateProfileRoles(
         activeProfile.profileId,
-        normalizeRoleSelection(draftRoles)
+        normalizedDraftRoles
       );
 
       if (snapshot) {
@@ -588,12 +593,21 @@ export default function ProfilePage() {
 
               {canManageRoleAssignments && activeProfile?.profileId ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Role Access</p>
-                <p className="mt-3 text-xs leading-relaxed text-gray-400">You can add or remove roles for this profile. Only root accounts can save changes.</p>
-                <div className="mt-5 flex flex-wrap gap-3">{EDITABLE_ROLE_OPTIONS.map((role) => {
-                  const isSelected = draftRoles.some((draftRole) => normalizeRoleName(draftRole) === normalizeRoleName(role));
+                <p className="mt-3 text-xs leading-relaxed text-gray-400">Open any participant profile and manage its roles here. Only root accounts can save changes.</p>
+                <div className="mt-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Assigned Roles</p>
+                  <div className="mt-3 flex flex-wrap gap-3">{normalizedDraftRoles.map((role) => {
+                    const isLastUserRole =
+                      normalizedDraftRoles.length === 1 &&
+                      normalizeRoleName(role) === "user";
 
-                  return <button key={role} type="button" onClick={() => toggleRole(role)} className={`inline-flex shrink-0 whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold tracking-[0.14em] transition ${isSelected ? "" : "opacity-70 hover:opacity-100"}`} style={isSelected ? { ...roleBadgeStyle(role), ...roleBadgeTextStyle } : { ...roleBadgeTextStyle, borderColor: "#2c2c2c", backgroundColor: "#101010", color: "#9ca3af", boxShadow: "none" }}>{roleBadgeLabel(role)}</button>;
-                })}</div>
+                    return <button key={role} type="button" onClick={() => removeRole(role)} disabled={isLastUserRole || isRolesSaving} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-60"><span>{roleBadgeLabel(role)}</span><span className="ml-2 text-[14px] leading-none">×</span></button>;
+                  })}</div>
+                </div>
+                <div className="mt-5">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Available Roles</p>
+                  <div className="mt-3 flex flex-wrap gap-3">{availableRoleOptions.map((role) => <button key={role} type="button" onClick={() => addRole(role)} disabled={isRolesSaving} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold tracking-[0.14em] opacity-70 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-40" style={{ ...roleBadgeTextStyle, borderColor: "#2c2c2c", backgroundColor: "#101010", color: "#9ca3af", boxShadow: "none" }}><span className="mr-2 text-[14px] leading-none">+</span><span>{roleBadgeLabel(role)}</span></button>)}</div>
+                </div>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button type="button" onClick={handleRolesSave} disabled={isRolesSaving || !hasRoleChanges} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isRolesSaving ? "Saving..." : "Save Roles"}</button>
                   <button type="button" onClick={resetRoles} disabled={isRolesSaving || !hasRoleChanges} className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">Reset</button>
