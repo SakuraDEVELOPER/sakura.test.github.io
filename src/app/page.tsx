@@ -1112,6 +1112,7 @@ export default function Home() {
 
       <div className="relative z-10">
         <nav className="flex flex-col gap-5 border-b border-[#1a1a1a] px-8 py-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col items-start gap-3">
           <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90">
             <span className="text-2xl text-[#ffb7c5] drop-shadow-[0_0_10px_rgba(255,183,197,0.5)]">
               🌸
@@ -1120,15 +1121,16 @@ export default function Home() {
               Sa<span className="text-[#ffb7c5]">kura</span>
             </h1>
           </Link>
+            <div className="flex items-center gap-2 rounded-full border border-[#2b1b1e] bg-[#1a1012] px-3 py-1">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-[#ffb7c5] shadow-[0_0_10px_#ffb7c5]"></span>
+              <span className="text-[10px] font-mono text-[#ffb7c5]">STATUS: UNDETECTED</span>
+            </div>
+          </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3 text-sm font-medium text-gray-400">
             <a href="#feature-showcase" className="transition hover:text-white">
               Features
             </a>
-            <div className="flex items-center gap-2 rounded-full border border-[#2b1b1e] bg-[#1a1012] px-3 py-1">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-[#ffb7c5] shadow-[0_0_10px_#ffb7c5]"></span>
-              <span className="text-[10px] font-mono text-[#ffb7c5]">STATUS: UNDETECTED</span>
-            </div>
             <HeaderAuth />
           </div>
         </nav>
