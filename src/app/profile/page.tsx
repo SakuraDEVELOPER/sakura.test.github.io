@@ -48,6 +48,7 @@ const AUTH_ERROR_EVENT = "sakura-auth-error";
 const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
+const PROFILE_ORIGIN_PATH_STORAGE_KEY = "sakura-profile-origin-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
 const PROFILE_BUILD_MARKER = "role-colors-v14";
 const repoBasePath = "/sakura.github.io";
@@ -80,6 +81,32 @@ const parseProfileId = (path: string | null) => {
   if (!path || !path.startsWith(`${repoBasePath}/profile/`)) return null;
   const raw = path.slice(`${repoBasePath}/profile/`.length);
   return /^\d+$/.test(raw) ? Number(raw) : null;
+};
+const clearStoredProfileOriginPath = () => {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.removeItem(PROFILE_ORIGIN_PATH_STORAGE_KEY);
+  } catch (error) {}
+};
+const redirectToStoredProfileOrigin = (requestedProfileId: number) => {
+  if (typeof window === "undefined") return false;
+
+  try {
+    const originPath = window.sessionStorage.getItem(PROFILE_ORIGIN_PATH_STORAGE_KEY);
+    const originProfileId = parseProfileId(originPath);
+
+    if (!originPath || originProfileId === null || originProfileId === requestedProfileId) {
+      window.sessionStorage.removeItem(PROFILE_ORIGIN_PATH_STORAGE_KEY);
+      return false;
+    }
+
+    window.sessionStorage.setItem(PROFILE_PATH_STORAGE_KEY, originPath);
+    window.sessionStorage.removeItem(PROFILE_ORIGIN_PATH_STORAGE_KEY);
+    window.location.replace(`${repoBasePath}/profile`);
+    return true;
+  } catch (error) {
+    return false;
+  }
 };
 const formatTime = (value: string | null) =>
   value
@@ -438,6 +465,7 @@ export default function ProfilePage() {
     const requestedId = requestedProfileId;
     const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
     if (requestedId === null || visibleCurrentUser?.profileId === requestedId) {
+      clearStoredProfileOriginPath();
       setProfile(visibleCurrentUser);
       setProfileError(null);
       setIsProfileLoading(false);
@@ -453,7 +481,12 @@ export default function ProfilePage() {
       .getProfileById(requestedId)
       .then((user) => {
         setProfile(user);
-        if (!user) setProfileError(`Profile #${requestedId} was not found.`);
+        if (!user) {
+          if (redirectToStoredProfileOrigin(requestedId)) return;
+          setProfileError(`Profile #${requestedId} was not found.`);
+          return;
+        }
+        clearStoredProfileOriginPath();
         if (window.location.pathname !== profilePath(requestedId)) window.history.replaceState(null, "", profilePath(requestedId));
       })
       .catch((error) => {
