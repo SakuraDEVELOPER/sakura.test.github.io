@@ -237,9 +237,10 @@ const roleDisplayLabel = (role: string) => {
 const roleBadgeLabel = (role: string) => roleDisplayLabel(role);
 const renderRoleBadgeText = (role: string) => roleBadgeLabel(role);
 const roleBadgeTextStyle: CSSProperties = {
-  fontFamily: "\"Segoe UI\", Arial, sans-serif",
-  fontKerning: "none",
-  letterSpacing: "0",
+  fontFamily: "Arial, Helvetica, sans-serif",
+  fontFeatureSettings: "\"liga\" 0, \"clig\" 0",
+  fontVariantLigatures: "none",
+  letterSpacing: "0.01em",
   lineHeight: 1.1,
   textTransform: "none",
   whiteSpace: "nowrap",
