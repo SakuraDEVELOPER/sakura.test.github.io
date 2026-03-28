@@ -29,6 +29,7 @@ type ProfileComment = {
   authorUid: string | null;
   authorProfileId: number | null;
   authorName: string;
+  authorPhotoURL: string | null;
   message: string;
   createdAt: string | null;
 };
@@ -37,6 +38,7 @@ type Bridge = {
   getProfileById: (profileId: number) => Promise<UserProfile | null>;
   getProfileComments: (profileId: number) => Promise<ProfileComment[]>;
   addProfileComment: (profileId: number, message: string) => Promise<ProfileComment>;
+  deleteProfileComment: (commentId: string) => Promise<string | null>;
   resendVerificationEmail: () => Promise<UserProfile | null>;
   updateUsername: (username: string) => Promise<UserProfile | null>;
   updateProfileRoles: (profileId: number, roles: string[]) => Promise<UserProfile | null>;
@@ -61,7 +63,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v18";
+const PROFILE_BUILD_MARKER = "role-colors-v19";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -103,6 +105,10 @@ const getProfileActionErrorMessage = (error: unknown, fallback: string) => {
     return "Sign in to leave a comment on this profile.";
   }
 
+  if (code === "comments/delete-forbidden") {
+    return "You can only delete your own comments or comments on your profile.";
+  }
+
   return error instanceof Error ? error.message : fallback;
 };
 const parseProfileId = (path: string | null) => {
@@ -119,6 +125,14 @@ const getStoredCurrentProfileId = () => {
     return null;
   }
 };
+const initialsFromText = (value: string) =>
+  value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2) || "CM";
 const redirectToLocalProfile = (requestedProfileId: number, currentProfileId: number | null) => {
   if (typeof window === "undefined") return false;
 
@@ -507,6 +521,7 @@ export default function ProfilePage() {
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentSuccess, setCommentSuccess] = useState<string | null>(null);
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
 
   useEffect(() => {
     setHasHydrated(true);
@@ -635,6 +650,14 @@ export default function ProfilePage() {
   const primaryName = activeProfile ? nameOf(activeProfile) : "Sakura User";
   const initials = activeProfile ? initialsOf(activeProfile) : "SA";
   const activeProfileRoleSignature = activeProfile?.roles?.join("|") ?? "";
+  const canDeleteComment = (comment: ProfileComment) =>
+    Boolean(
+      visibleCurrentUser &&
+        (comment.authorUid === visibleCurrentUser.uid ||
+          (isOwner &&
+            typeof activeProfile?.profileId === "number" &&
+            comment.profileId === activeProfile.profileId))
+    );
 
   useEffect(() => {
     if (!activeProfile) {
@@ -648,6 +671,7 @@ export default function ProfilePage() {
       setCommentInput("");
       setCommentError(null);
       setCommentSuccess(null);
+      setDeletingCommentId(null);
       return;
     }
 
@@ -662,6 +686,7 @@ export default function ProfilePage() {
     setCommentInput("");
     setCommentError(null);
     setCommentSuccess(null);
+    setDeletingCommentId(null);
   }, [activeProfile, activeProfileRoleSignature]);
 
   useEffect(() => {
@@ -913,6 +938,33 @@ export default function ProfilePage() {
     }
   };
 
+  const handleCommentDelete = async (commentId: string) => {
+    const bridge = getWindowState().sakuraFirebaseAuth;
+
+    if (!bridge || !commentId || !visibleCurrentUser) {
+      return;
+    }
+
+    setCommentError(null);
+    setCommentSuccess(null);
+    setDeletingCommentId(commentId);
+
+    try {
+      const deletedCommentId = await bridge.deleteProfileComment(commentId);
+      const resolvedCommentId = deletedCommentId ?? commentId;
+
+      setComments((currentComments) =>
+        currentComments.filter((comment) => comment.id !== resolvedCommentId)
+      );
+
+      setCommentSuccess("Comment deleted.");
+    } catch (error) {
+      setCommentError(getProfileActionErrorMessage(error, "Could not delete this comment."));
+    } finally {
+      setDeletingCommentId((currentId) => (currentId === commentId ? null : currentId));
+    }
+  };
+
   return (
     <main
       data-profile-build={PROFILE_BUILD_MARKER}
@@ -1057,13 +1109,25 @@ export default function ProfilePage() {
                   {!isCommentsLoading && commentsError ? <p className="mt-4 text-sm leading-relaxed text-[#ff9aa9]">{commentsError}</p> : null}
                   {!isCommentsLoading && !commentsError && !comments.length ? <p className="mt-4 text-sm text-gray-500">No comments yet.</p> : null}
                   {!isCommentsLoading && !commentsError && comments.length ? <div className="mt-4 flex flex-col gap-3">
-                    {comments.map((comment) => <div key={comment.id} className="rounded-[24px] border border-[#1d1d1d] bg-[#090909] px-4 py-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} className="text-sm font-semibold text-[#ffd2dc] transition hover:text-white">{comment.authorName}</a> : <p className="text-sm font-semibold text-[#ffd2dc]">{comment.authorName}</p>}
-                        <p className="text-xs text-gray-500">{formatTime(comment.createdAt)}</p>
-                      </div>
-                      <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">{comment.message}</p>
-                    </div>)}
+                    {comments.map((comment) => {
+                      const isDeletingComment = deletingCommentId === comment.id;
+                      const showDeleteAction = canDeleteComment(comment);
+                      const commentInitials = initialsFromText(comment.authorName);
+
+                      return <div key={comment.id} className="rounded-[24px] border border-[#1d1d1d] bg-[#090909] px-4 py-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex min-w-0 items-start gap-3">
+                            {comment.authorPhotoURL ? <img src={comment.authorPhotoURL} alt={comment.authorName} className="h-11 w-11 shrink-0 rounded-2xl border border-[#2a2022] object-cover shadow-[0_0_18px_rgba(255,183,197,0.1)]" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2a2022] bg-[#1a1012] text-[11px] font-black uppercase text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.08)]">{commentInitials}</div>}
+                            <div className="min-w-0">
+                              {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} className="block truncate text-sm font-semibold text-[#ffd2dc] transition hover:text-white">{comment.authorName}</a> : <p className="truncate text-sm font-semibold text-[#ffd2dc]">{comment.authorName}</p>}
+                              <p className="mt-1 text-xs text-gray-500">{formatTime(comment.createdAt)}</p>
+                            </div>
+                          </div>
+                          {showDeleteAction ? <button type="button" onClick={() => handleCommentDelete(comment.id)} disabled={isDeletingComment} className="inline-flex shrink-0 items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">{isDeletingComment ? "Deleting..." : "Delete"}</button> : null}
+                        </div>
+                        <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">{comment.message}</p>
+                      </div>;
+                    })}
                   </div> : null}
                 </div>
               </div>

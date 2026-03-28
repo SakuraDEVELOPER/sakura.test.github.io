@@ -25,6 +25,7 @@ const firebaseModuleScript = `
         },
         {
           collection,
+          deleteDoc,
           doc,
           getDoc,
           getDocs,
@@ -410,6 +411,8 @@ const firebaseModuleScript = `
     typeof value === "string"
       ? value.trim().replace(/\\s+/g, " ").slice(0, 48)
       : "";
+  const normalizeProfileCommentPhotoURL = (value) =>
+    typeof value === "string" && value ? value : null;
   const toStoredProfileComment = (id, details = {}) => ({
     id,
     profileId: typeof details.profileId === "number" ? details.profileId : null,
@@ -421,6 +424,7 @@ const firebaseModuleScript = `
       (typeof details.authorProfileId === "number"
         ? \`Profile #\${details.authorProfileId}\`
         : "Member"),
+    authorPhotoURL: normalizeProfileCommentPhotoURL(details.authorPhotoURL),
     message: normalizeProfileCommentMessage(details.message),
     createdAt: typeof details.createdAt === "string" ? details.createdAt : null,
   });
@@ -1287,6 +1291,7 @@ const firebaseModuleScript = `
         authorProfileId:
           typeof authorSnapshot?.profileId === "number" ? authorSnapshot.profileId : null,
         authorName,
+        authorPhotoURL: authorSnapshot?.photoURL ?? user.photoURL ?? null,
         message: normalizedMessage,
         createdAt,
       };
@@ -1305,6 +1310,65 @@ const firebaseModuleScript = `
       }
 
       return toStoredProfileComment(commentRef.id, commentPayload);
+    };
+
+    const deleteProfileComment = async (commentId) => {
+      const normalizedCommentId = typeof commentId === "string" ? commentId.trim() : "";
+
+      if (!normalizedCommentId) {
+        throw createFirebaseError("comments/invalid-id", "Comment id is required.");
+      }
+
+      const user = auth.currentUser;
+
+      if (!user || user.isAnonymous) {
+        throw createFirebaseError(
+          "comments/login-required",
+          "Sign in to manage comments on this profile."
+        );
+      }
+
+      const commentRef = doc(profileCommentsCollection, normalizedCommentId);
+      const commentSnapshot = await getDoc(commentRef);
+
+      if (!commentSnapshot.exists()) {
+        return null;
+      }
+
+      const comment = toStoredProfileComment(commentSnapshot.id, commentSnapshot.data());
+      let actorSnapshot = window.sakuraCurrentUserSnapshot;
+
+      if (!actorSnapshot || actorSnapshot.isAnonymous || actorSnapshot.uid !== user.uid) {
+        actorSnapshot = await resolveUserSnapshot(user);
+      }
+
+      const isAuthor = comment.authorUid === user.uid;
+      const ownsTargetProfile =
+        typeof actorSnapshot?.profileId === "number" &&
+        typeof comment.profileId === "number" &&
+        actorSnapshot.profileId === comment.profileId;
+
+      if (!isAuthor && !ownsTargetProfile) {
+        throw createFirebaseError(
+          "comments/delete-forbidden",
+          "You can only delete your own comments or comments on your profile."
+        );
+      }
+
+      try {
+        await deleteDoc(commentRef);
+      } catch (error) {
+        if (isPermissionDeniedError(error)) {
+          throw createFirebaseError(
+            "comments/delete-denied",
+            "Comments could not be deleted. Check Firestore rules for profileComments."
+          );
+        }
+
+        throw error;
+      }
+
+      return comment.id;
     };
 
     const updateAvatar = async (file) => {
@@ -1598,6 +1662,7 @@ const firebaseModuleScript = `
       getProfileById,
       getProfileComments,
       addProfileComment,
+      deleteProfileComment,
       resendVerificationEmail,
       updateProfileRoles,
       updateAvatar,
