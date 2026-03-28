@@ -409,6 +409,76 @@ const roleHeadlineStyle = (role: string | null | undefined): CSSProperties => {
     textShadow: typeof badgeStyle.boxShadow === "string" ? badgeStyle.boxShadow : "0 0 18px rgba(255,255,255,0.08)",
   };
 };
+const withAlpha = (value: string, alpha: number) => {
+  const normalized = value.trim();
+
+  if (!normalized.startsWith("#")) {
+    return value;
+  }
+
+  let hex = normalized.slice(1);
+
+  if (hex.length === 3) {
+    hex = hex
+      .split("")
+      .map((part) => part + part)
+      .join("");
+  }
+
+  if (hex.length !== 6) {
+    return value;
+  }
+
+  const red = Number.parseInt(hex.slice(0, 2), 16);
+  const green = Number.parseInt(hex.slice(2, 4), 16);
+  const blue = Number.parseInt(hex.slice(4, 6), 16);
+
+  if ([red, green, blue].some((channel) => Number.isNaN(channel))) {
+    return value;
+  }
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+};
+const profileMetaCardStyle = (role: string | null | undefined): CSSProperties => {
+  const badgeStyle = roleBadgeStyle(role ?? "user");
+  const borderColor =
+    typeof badgeStyle.borderColor === "string" ? badgeStyle.borderColor : "#2a2a2a";
+  const accentTextColor =
+    typeof badgeStyle.color === "string" ? badgeStyle.color : "#f3f4f6";
+
+  return {
+    borderColor: withAlpha(borderColor, 0.34),
+    backgroundColor: "#090909",
+    backgroundImage: [
+      `radial-gradient(circle at top left, ${withAlpha(borderColor, 0.18)} 0%, transparent 58%)`,
+      `linear-gradient(180deg, ${withAlpha(accentTextColor, 0.05)} 0%, rgba(9,9,9,0) 100%)`,
+    ].join(", "),
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.03), 0 0 26px ${withAlpha(borderColor, 0.12)}`,
+  };
+};
+const profileMetaLabelStyle = (role: string | null | undefined): CSSProperties => {
+  const badgeStyle = roleBadgeStyle(role ?? "user");
+  const borderColor =
+    typeof badgeStyle.borderColor === "string" ? badgeStyle.borderColor : "#6b7280";
+
+  return {
+    color: withAlpha(borderColor, 0.82),
+    textShadow: `0 0 14px ${withAlpha(borderColor, 0.16)}`,
+  };
+};
+const profileMetaValueStyle = (role: string | null | undefined): CSSProperties => {
+  const badgeStyle = roleBadgeStyle(role ?? "user");
+  const accentTextColor =
+    typeof badgeStyle.color === "string" ? badgeStyle.color : "#f8fafc";
+
+  return {
+    color: accentTextColor,
+    fontFamily: "var(--font-geist-sans), Arial, Helvetica, sans-serif",
+    fontWeight: 700,
+    letterSpacing: "-0.01em",
+    textShadow: `0 0 18px ${withAlpha(accentTextColor, 0.1)}`,
+  };
+};
 const roleCommentAuthorColor = (role: string | null | undefined) => {
   const normalizedRole = normalizeRoleName(role ?? "");
 
@@ -727,6 +797,9 @@ export default function ProfilePage() {
   const normalizedProfileRoles = profileRoles;
   const topProfileRole = profileRoles[0] ?? null;
   const profileHeadlineStyle = roleHeadlineStyle(topProfileRole);
+  const metaCardStyle = profileMetaCardStyle(topProfileRole);
+  const metaLabelStyle = profileMetaLabelStyle(topProfileRole);
+  const metaValueStyle = profileMetaValueStyle(topProfileRole);
   const shouldShowVerificationBanner = Boolean(
     isOwner &&
       activeProfile?.email &&
@@ -1291,7 +1364,26 @@ export default function ProfilePage() {
                   ["Profile Name", primaryName],
                   ...(hasUsername || isOwner ? [["Логин", hasUsername ? `@${activeProfile.login}` : "Not set yet"]] : []),
                   ["Account Created", formatTime(activeProfile.creationTime)],
-                ].map(([label, value]) => <div key={label} className="rounded-[26px] border border-[#1d1d1d] bg-[#090909] p-5"><p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gray-600">{label}</p><p className="mt-3 break-all text-sm leading-relaxed text-gray-300">{value}</p></div>)}
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    style={metaCardStyle}
+                    className="rounded-[26px] border p-5 backdrop-blur-sm"
+                  >
+                    <p
+                      style={metaLabelStyle}
+                      className="font-mono text-[10px] uppercase tracking-[0.32em]"
+                    >
+                      {label}
+                    </p>
+                    <p
+                      style={metaValueStyle}
+                      className="mt-3 break-words text-[18px] leading-relaxed"
+                    >
+                      {value}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
