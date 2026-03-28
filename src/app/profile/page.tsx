@@ -61,7 +61,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v17";
+const PROFILE_BUILD_MARKER = "role-colors-v18";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -532,10 +532,15 @@ export default function ProfilePage() {
       setAuthStateSettled(Boolean(getWindowState().sakuraAuthStateSettled));
     };
     const onUserUpdate = () => setCurrentUser(getWindowState().sakuraCurrentUserSnapshot ?? null);
-    const onError = () => setAuthError(getWindowState().sakuraFirebaseAuthError ?? "Firebase Auth did not load.");
+    const onError = () =>
+      setAuthError(
+        getWindowState().sakuraFirebaseAuthError ??
+          "Firebase Auth is still loading. Reload the page if this does not clear soon."
+      );
     const timeoutId = window.setTimeout(() => {
-      if (!getWindowState().sakuraFirebaseAuth && !getWindowState().sakuraFirebaseAuthError) setAuthError("Firebase Auth did not load.");
-    }, 4000);
+      if (!getWindowState().sakuraFirebaseAuth && !getWindowState().sakuraFirebaseAuthError)
+        setAuthError("Firebase Auth is still loading. Reload the page if this does not clear soon.");
+    }, 12000);
     sync();
     window.addEventListener(AUTH_READY_EVENT, sync);
     window.addEventListener(AUTH_ERROR_EVENT, onError);

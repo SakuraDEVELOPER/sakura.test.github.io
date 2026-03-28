@@ -3,33 +3,45 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 const firebaseModuleScript = `
-  import { getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import {
-    createUserWithEmailAndPassword,
-    deleteUser,
-    GoogleAuthProvider,
-    getAuth,
-    onAuthStateChanged,
-    sendEmailVerification,
-    signInAnonymously,
-    signInWithPopup,
-    signInWithEmailAndPassword,
-    signOut,
-    updateProfile
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    getFirestore,
-    limit,
-    query,
-    runTransaction,
-    setDoc,
-    where
-  } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  const firebaseConfig = {
+  (async () => {
+    try {
+      const [
+        {
+          getApps,
+          initializeApp
+        },
+        {
+          createUserWithEmailAndPassword,
+          deleteUser,
+          GoogleAuthProvider,
+          getAuth,
+          onAuthStateChanged,
+          sendEmailVerification,
+          signInAnonymously,
+          signInWithPopup,
+          signInWithEmailAndPassword,
+          signOut,
+          updateProfile
+        },
+        {
+          collection,
+          doc,
+          getDoc,
+          getDocs,
+          getFirestore,
+          limit,
+          query,
+          runTransaction,
+          setDoc,
+          where
+        }
+      ] = await Promise.all([
+        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
+        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"),
+        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
+      ]);
+
+      const firebaseConfig = {
     apiKey: "AIzaSyAnZQt5NWXGOWuz3STh_vy-dSENVBM9_ZY",
     authDomain: "sakura-bfa74.firebaseapp.com",
     projectId: "sakura-bfa74",
@@ -37,7 +49,7 @@ const firebaseModuleScript = `
     messagingSenderId: "145336250722",
     appId: "1:145336250722:web:d31610ae8258c398e47c3b",
     measurementId: "G-1V07L6BRL0"
-  };
+      };
 
   const LOGIN_MAX_LENGTH = 24;
   const LOGIN_MIN_LENGTH = 3;
@@ -187,7 +199,7 @@ const firebaseModuleScript = `
   const sanitizeLogin = (value) =>
     value
       .trim()
-      .replace(/\s+/g, "")
+      .replace(/\\s+/g, "")
       .replace(/[^A-Za-zА-Яа-яЁё0-9._-]/g, "")
       .slice(0, LOGIN_MAX_LENGTH);
 
@@ -209,7 +221,7 @@ const firebaseModuleScript = `
     user.providerData.map((providerData) => providerData?.providerId).filter(Boolean);
 
   const isUserLikeRole = (role) =>
-    typeof role === "string" && /^u(?:[\s_-]*s)?[\s_-]*e[\s_-]*r$/i.test(role.trim());
+    typeof role === "string" && /^u(?:[\\s_-]*s)?[\\s_-]*e[\\s_-]*r$/i.test(role.trim());
   const toCompactRoleToken = (role) =>
     typeof role === "string"
       ? role
@@ -228,7 +240,7 @@ const firebaseModuleScript = `
 
   const normalizeRoleName = (role) => {
     const normalizedRole =
-      typeof role === "string" ? role.trim().toLowerCase().replace(/\s+/g, " ") : "";
+      typeof role === "string" ? role.trim().toLowerCase().replace(/\\s+/g, " ") : "";
     const compactRole = toCompactRoleToken(role);
 
     if (!normalizedRole) {
@@ -239,7 +251,7 @@ const firebaseModuleScript = `
       return "user";
     }
 
-    if (/^co[\s_-]*owner$/i.test(role.trim())) {
+    if (/^co[\\s_-]*owner$/i.test(role.trim())) {
       return "co-owner";
     }
 
@@ -297,7 +309,7 @@ const firebaseModuleScript = `
     typeof role === "string"
       ? isUserLikeRole(role)
         ? "user"
-        : role.trim().replace(/\s+/g, " ")
+        : role.trim().replace(/\\s+/g, " ")
       : "";
   const canonicalRoleLabel = (role) => {
     const normalizedRole = normalizeRoleName(role);
@@ -392,11 +404,11 @@ const firebaseModuleScript = `
       : [];
   const normalizeProfileCommentMessage = (value) =>
     typeof value === "string"
-      ? value.replace(/\r\n/g, "\n").trim().slice(0, PROFILE_COMMENT_MAX_LENGTH)
+      ? value.replace(/\\r\\n/g, "\\n").trim().slice(0, PROFILE_COMMENT_MAX_LENGTH)
       : "";
   const normalizeProfileCommentAuthorName = (value) =>
     typeof value === "string"
-      ? value.trim().replace(/\s+/g, " ").slice(0, 48)
+      ? value.trim().replace(/\\s+/g, " ").slice(0, 48)
       : "";
   const toStoredProfileComment = (id, details = {}) => ({
     id,
@@ -664,7 +676,7 @@ const firebaseModuleScript = `
     const resolveAvailableLogin = async (requestedLogin, currentUid = null, automatic = false) => {
       const normalizedRequestedLogin = String(requestedLogin ?? "")
         .trim()
-        .replace(/\s+/g, "");
+        .replace(/\\s+/g, "");
       const baseLogin = sanitizeLogin(normalizedRequestedLogin);
 
       if (
@@ -1627,21 +1639,36 @@ const firebaseModuleScript = `
     };
     window.loginWithGoogle = loginWithGoogle;
 
-    window.dispatchEvent(new CustomEvent("sakura-auth-ready"));
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to initialize Firebase Auth.";
+      window.dispatchEvent(new CustomEvent("sakura-auth-ready"));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to initialize Firebase Auth.";
 
-    window.sakuraFirebaseAuthError = message;
-    window.sakuraAuthStateSettled = true;
-    window.dispatchEvent(new CustomEvent(AUTH_STATE_SETTLED_EVENT));
-    window.dispatchEvent(
-      new CustomEvent("sakura-auth-error", {
-        detail: { message }
-      })
-    );
-    console.error("Firebase Auth init failed:", error);
-  }
+      window.sakuraFirebaseAuthError = message;
+      window.sakuraAuthStateSettled = true;
+      window.dispatchEvent(new CustomEvent(AUTH_STATE_SETTLED_EVENT));
+      window.dispatchEvent(
+        new CustomEvent("sakura-auth-error", {
+          detail: { message }
+        })
+      );
+      console.error("Firebase Auth init failed:", error);
+    }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load Firebase Auth modules.";
+
+      window.sakuraFirebaseAuthError = message;
+      window.sakuraAuthStateSettled = true;
+      window.dispatchEvent(new CustomEvent("sakura-auth-state-settled"));
+      window.dispatchEvent(
+        new CustomEvent("sakura-auth-error", {
+          detail: { message }
+        })
+      );
+      console.error("Firebase Auth module load failed:", error);
+    }
+  })();
 `;
 
 const geistSans = Geist({
