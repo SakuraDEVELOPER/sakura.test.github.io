@@ -1,30 +1,7 @@
 ﻿const firebaseModuleScript = `
   (() => {
     let loadPromise;
-    let idleTimerId = 0;
-    let idleCallbackId = null;
-    let teardownInteractionListeners = () => {};
-    const cleanupDeferredStart = () => {
-      if (idleTimerId) {
-        window.clearTimeout(idleTimerId);
-        idleTimerId = 0;
-      }
-
-      if (
-        idleCallbackId !== null &&
-        "cancelIdleCallback" in window &&
-        typeof window.cancelIdleCallback === "function"
-      ) {
-        window.cancelIdleCallback(idleCallbackId);
-      }
-
-      idleCallbackId = null;
-      teardownInteractionListeners();
-      teardownInteractionListeners = () => {};
-    };
     const startFirebaseAuth = () => {
-      cleanupDeferredStart();
-
       if (loadPromise) {
         return loadPromise;
       }
@@ -1995,36 +1972,7 @@
     };
 
     window.sakuraStartFirebaseAuth = startFirebaseAuth;
-
-    if (/(?:^|\\/)profile(?:\\/|$)/.test(window.location.pathname)) {
-      startFirebaseAuth();
-      return;
-    }
-
-    const interactionEvents = ["pointerdown", "keydown", "touchstart"];
-    const handleInteractionStart = () => {
-      startFirebaseAuth();
-    };
-
-    interactionEvents.forEach((eventName) => {
-      window.addEventListener(eventName, handleInteractionStart, { once: true, passive: true });
-    });
-
-    teardownInteractionListeners = () => {
-      interactionEvents.forEach((eventName) => {
-        window.removeEventListener(eventName, handleInteractionStart);
-      });
-    };
-
-    if ("requestIdleCallback" in window && typeof window.requestIdleCallback === "function") {
-      idleCallbackId = window.requestIdleCallback(() => {
-        startFirebaseAuth();
-      }, { timeout: 1500 });
-    } else {
-      idleTimerId = window.setTimeout(() => {
-        startFirebaseAuth();
-      }, 1200);
-    }
+    startFirebaseAuth();
   })();
 `;
 

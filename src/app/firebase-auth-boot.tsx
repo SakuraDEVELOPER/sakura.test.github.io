@@ -10,31 +10,6 @@ type FirebaseBootWindow = Window & {
 
 const getWindowState = () => window as FirebaseBootWindow;
 
-const waitForRuntimeStart = (bootFn: () => Promise<void>) =>
-  new Promise<void>((resolve) => {
-    let attempts = 0;
-
-    const tick = () => {
-      const runtimeStart = getWindowState().sakuraStartFirebaseAuth;
-
-      if (runtimeStart && runtimeStart !== bootFn) {
-        resolve();
-        return;
-      }
-
-      attempts += 1;
-
-      if (attempts >= 20) {
-        resolve();
-        return;
-      }
-
-      window.setTimeout(tick, 25);
-    };
-
-    tick();
-  });
-
 export default function FirebaseAuthBoot() {
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -42,8 +17,31 @@ export default function FirebaseAuthBoot() {
     }
 
     const runtime = getWindowState();
+    let idleTimerId = 0;
+    let idleCallbackId: number | null = null;
+    const interactionEvents = ["pointerdown", "keydown", "touchstart"] as const;
+    const cleanupDeferredLoad = () => {
+      interactionEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handleInteractionStart);
+      });
 
-    const loadRuntime = async (startFirebase = false) => {
+      if (
+        idleCallbackId !== null &&
+        "cancelIdleCallback" in window &&
+        typeof window.cancelIdleCallback === "function"
+      ) {
+        window.cancelIdleCallback(idleCallbackId);
+      }
+
+      if (idleTimerId) {
+        window.clearTimeout(idleTimerId);
+      }
+
+      idleCallbackId = null;
+      idleTimerId = 0;
+    };
+
+    const loadRuntime = async () => {
       if (!runtime.sakuraFirebaseRuntimeInjected && !runtime.sakuraFirebaseRuntimePromise) {
         runtime.sakuraFirebaseRuntimePromise = import("./firebase-auth-script")
           .then(async ({ default: firebaseModuleScript }) => {
@@ -64,25 +62,40 @@ export default function FirebaseAuthBoot() {
       if (runtime.sakuraFirebaseRuntimePromise) {
         await runtime.sakuraFirebaseRuntimePromise;
       }
-
-      if (startFirebase) {
-        await waitForRuntimeStart(bootNow);
-        const runtimeStart = getWindowState().sakuraStartFirebaseAuth;
-
-        if (runtimeStart && runtimeStart !== bootNow) {
-          await runtimeStart();
-        }
-      }
     };
 
-    const bootNow = () => loadRuntime(true);
+    const bootNow = () => {
+      cleanupDeferredLoad();
+      return loadRuntime();
+    };
+    const handleInteractionStart = () => {
+      void bootNow();
+    };
 
     runtime.sakuraStartFirebaseAuth = bootNow;
-    void loadRuntime(false);
 
     if (/(?:^|\/)profile(?:\/|$)/.test(window.location.pathname)) {
       void bootNow();
+      return;
     }
+
+    interactionEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handleInteractionStart, { once: true, passive: true });
+    });
+
+    if ("requestIdleCallback" in window && typeof window.requestIdleCallback === "function") {
+      idleCallbackId = window.requestIdleCallback(() => {
+        void loadRuntime();
+      }, { timeout: 1500 });
+    } else {
+      idleTimerId = window.setTimeout(() => {
+        void loadRuntime();
+      }, 1200);
+    }
+
+    return () => {
+      cleanupDeferredLoad();
+    };
   }, []);
 
   return null;
