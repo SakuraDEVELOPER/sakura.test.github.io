@@ -65,6 +65,7 @@
   const PROFILE_LOOKUP_TIMEOUT_MS = 5000;
   const DISPLAY_NAME_MAX_LENGTH = 48;
   const USER_UPDATE_EVENT = "sakura-user-update";
+  const AUTH_ERROR_EVENT = "sakura-auth-error";
   const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
   const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
   const AVATAR_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -851,6 +852,48 @@
 
       return snapshot;
     };
+    const hasAssignedProfileId = (details) =>
+      typeof details?.profileId === "number" && details.profileId > 0;
+    const readStoredProfileDetails = async (user, fallbackDetails = {}) => {
+      const storedSnapshot = await getDoc(userRefFor(user.uid));
+
+      if (!storedSnapshot.exists()) {
+        return null;
+      }
+
+      const storedDetails = buildUserDetailsFromSnapshot(user, {
+        ...fallbackDetails,
+        ...storedSnapshot.data(),
+      });
+
+      return hasAssignedProfileId(storedDetails) ? storedDetails : null;
+    };
+    const emitAuthError = (message) => {
+      window.sakuraFirebaseAuthError = message;
+      window.dispatchEvent(
+        new CustomEvent(AUTH_ERROR_EVENT, {
+          detail: { message },
+        })
+      );
+    };
+    const clearBrokenProfileSession = async (message) => {
+      stopPresenceTracking();
+
+      if (message) {
+        emitAuthError(message);
+      }
+
+      try {
+        await signOut(auth);
+      } catch (error) {
+      }
+
+      return publishUserSnapshot(null);
+    };
+    const isProfileRecordError = (error) => {
+      const code = getErrorCode(error);
+      return code === "profile/record-missing" || code === "permission-denied";
+    };
     const ensureRootActorSnapshot = async () => {
       const user = auth.currentUser;
 
@@ -1217,39 +1260,76 @@
       };
 
       if (existingProfileId !== null) {
-        return writeProfileData(existingProfileId);
+        try {
+          return await writeProfileData(existingProfileId);
+        } catch (error) {
+          if (!isPermissionDeniedError(error)) {
+            throw error;
+          }
+
+          const storedDetails = buildUserDetailsFromSnapshot(user, {
+            ...profilePayload,
+            ...existingData,
+          });
+
+          if (hasAssignedProfileId(storedDetails)) {
+            return storedDetails;
+          }
+
+          throw error;
+        }
       }
 
-      const nextProfileId = await runTransaction(db, async (transaction) => {
-        const userSnapshotInTransaction = await transaction.get(userRef);
-        const existingTransactionData = userSnapshotInTransaction.exists()
-          ? userSnapshotInTransaction.data()
-          : null;
-        const existingTransactionProfileId =
-          typeof existingTransactionData?.profileId === "number"
-            ? existingTransactionData.profileId
-            : null;
+      let nextProfileId;
 
-        if (existingTransactionProfileId !== null) {
-          return existingTransactionProfileId;
+      try {
+        nextProfileId = await runTransaction(db, async (transaction) => {
+          const userSnapshotInTransaction = await transaction.get(userRef);
+          const existingTransactionData = userSnapshotInTransaction.exists()
+            ? userSnapshotInTransaction.data()
+            : null;
+          const existingTransactionProfileId =
+            typeof existingTransactionData?.profileId === "number"
+              ? existingTransactionData.profileId
+              : null;
+
+          if (existingTransactionProfileId !== null) {
+            return existingTransactionProfileId;
+          }
+
+          const countersSnapshot = await transaction.get(countersRef);
+          const currentCount =
+            countersSnapshot.exists() && typeof countersSnapshot.data()?.profileCount === "number"
+              ? countersSnapshot.data().profileCount
+              : 0;
+          const profileId = currentCount + 1;
+
+          transaction.set(countersRef, { profileCount: profileId }, { merge: true });
+          transaction.set(
+            userRef,
+            { ...profilePayload, profileId },
+            { merge: true }
+          );
+
+          return profileId;
+        });
+      } catch (error) {
+        if (isPermissionDeniedError(error)) {
+          const storedDetails = await readStoredProfileDetails(user, profilePayload).catch((readError) => {
+            if (!isPermissionDeniedError(readError)) {
+              throw readError;
+            }
+
+            return null;
+          });
+
+          if (storedDetails) {
+            return storedDetails;
+          }
         }
 
-        const countersSnapshot = await transaction.get(countersRef);
-        const currentCount =
-          countersSnapshot.exists() && typeof countersSnapshot.data()?.profileCount === "number"
-            ? countersSnapshot.data().profileCount
-            : 0;
-        const profileId = currentCount + 1;
-
-        transaction.set(countersRef, { profileCount: profileId }, { merge: true });
-        transaction.set(
-          userRef,
-          { ...profilePayload, profileId },
-          { merge: true }
-        );
-
-        return profileId;
-      });
+        throw error;
+      }
 
       const finalSnapshot = await getDoc(userRef);
       const finalData = finalSnapshot.exists() ? finalSnapshot.data() : null;
@@ -1285,7 +1365,27 @@
           throw error;
         }
 
-        return publishUserSnapshot(toUserSnapshot(user, buildFallbackUserDetails(user, options)));
+        const fallbackDetails = buildFallbackUserDetails(user, options);
+        const storedDetails = await readStoredProfileDetails(user, fallbackDetails).catch((readError) => {
+          if (!isPermissionDeniedError(readError)) {
+            throw readError;
+          }
+
+          return null;
+        });
+
+        if (storedDetails) {
+          return publishUserSnapshot(toUserSnapshot(user, storedDetails));
+        }
+
+        if (!user.isAnonymous) {
+          throw createFirebaseError(
+            "profile/record-missing",
+            "Profile record could not be created or loaded. Check Firestore rules for users/{uid} and meta/counters."
+          );
+        }
+
+        return publishUserSnapshot(toUserSnapshot(user, fallbackDetails));
       }
     };
 
@@ -1463,16 +1563,29 @@
 
     const loginWithGoogle = async () => {
       const result = await signInWithPopup(auth, provider);
-      const snapshot = await resolveUserSnapshot(result.user, {
-        preferredDisplayName: result.user.displayName?.trim() || null,
-      });
-      const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot);
-      await syncPresence(result.user, {
-        path: window.location.pathname,
-        source: "google-login",
-        forceVisit: true,
-      });
-      return allowedSnapshot;
+
+      try {
+        const snapshot = await resolveUserSnapshot(result.user, {
+          preferredDisplayName: result.user.displayName?.trim() || null,
+        });
+        const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot);
+        await syncPresence(result.user, {
+          path: window.location.pathname,
+          source: "google-login",
+          forceVisit: true,
+        });
+        return allowedSnapshot;
+      } catch (error) {
+        if (isProfileRecordError(error)) {
+          await clearBrokenProfileSession(
+            error instanceof Error
+              ? error.message
+              : "Profile record could not be created or loaded."
+          );
+        }
+
+        throw error;
+      }
     };
 
     const getProfileById = async (profileId) => {
@@ -2299,11 +2412,21 @@
         } catch (error) {
           const errorCode = getErrorCode(error);
 
-          if (errorCode === "auth/login-already-in-use" || errorCode === "auth/invalid-login") {
+          if (
+            errorCode === "auth/login-already-in-use" ||
+            errorCode === "auth/invalid-login" ||
+            errorCode === "profile/record-missing" ||
+            errorCode === "permission-denied"
+          ) {
             try {
               await deleteUser(credentials.user);
             } catch (cleanupError) {
               console.error("Failed to rollback registration:", cleanupError);
+              await clearBrokenProfileSession(
+                error instanceof Error
+                  ? error.message
+                  : "Profile record could not be created or loaded."
+              );
             }
           }
 
@@ -2313,14 +2436,27 @@
       login: async (identifier, password) => {
         const email = await resolveEmailForLogin(identifier);
         const credentials = await signInWithEmailAndPassword(auth, email, password);
-        const snapshot = await resolveUserSnapshot(credentials.user);
-        const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot);
-        await syncPresence(credentials.user, {
-          path: window.location.pathname,
-          source: "login",
-          forceVisit: true,
-        });
-        return allowedSnapshot;
+
+        try {
+          const snapshot = await resolveUserSnapshot(credentials.user);
+          const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot);
+          await syncPresence(credentials.user, {
+            path: window.location.pathname,
+            source: "login",
+            forceVisit: true,
+          });
+          return allowedSnapshot;
+        } catch (error) {
+          if (isProfileRecordError(error)) {
+            await clearBrokenProfileSession(
+              error instanceof Error
+                ? error.message
+                : "Profile record could not be created or loaded."
+            );
+          }
+
+          throw error;
+        }
       },
       loginWithGoogle,
       updateDisplayName,
@@ -2367,18 +2503,27 @@
             return;
           }
 
-          const snapshot = await resolveUserSnapshot(user);
-          const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot, {
-            throwError: false,
-          });
+          try {
+            const snapshot = await resolveUserSnapshot(user);
+            const allowedSnapshot = await enforceActiveSessionNotBanned(snapshot, {
+              throwError: false,
+            });
 
-          if (!allowedSnapshot) {
-            callback(publishUserSnapshot(null));
-            return;
+            if (!allowedSnapshot) {
+              callback(publishUserSnapshot(null));
+              return;
+            }
+
+            callback(allowedSnapshot);
+            startPresenceTracking(user);
+          } catch (error) {
+            await clearBrokenProfileSession(
+              error instanceof Error
+                ? error.message
+                : "Profile record could not be created or loaded."
+            );
+            callback(window.sakuraCurrentUserSnapshot ?? null);
           }
-
-          callback(allowedSnapshot);
-          startPresenceTracking(user);
         })
     };
     window.loginWithGoogle = loginWithGoogle;
