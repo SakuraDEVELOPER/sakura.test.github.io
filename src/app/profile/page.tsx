@@ -696,6 +696,56 @@ export default function ProfilePage() {
   const primaryName = activeProfile ? nameOf(activeProfile) : "Sakura User";
   const initials = activeProfile ? initialsOf(activeProfile) : "SA";
   const activeProfileRoleSignature = activeProfile?.roles?.join("|") ?? "";
+  const resolveCommentAuthorRole = (comment: ProfileComment) => {
+    if (comment.authorAccentRole) {
+      return comment.authorAccentRole;
+    }
+
+    if (
+      activeProfile &&
+      ((comment.authorUid && comment.authorUid === activeProfile.uid) ||
+        (typeof comment.authorProfileId === "number" &&
+          comment.authorProfileId === activeProfile.profileId))
+    ) {
+      return normalizeRoleSelection(activeProfile.roles)[0] ?? null;
+    }
+
+    if (
+      visibleCurrentUser &&
+      ((comment.authorUid && comment.authorUid === visibleCurrentUser.uid) ||
+        (typeof comment.authorProfileId === "number" &&
+          comment.authorProfileId === visibleCurrentUser.profileId))
+    ) {
+      return normalizeRoleSelection(visibleCurrentUser.roles)[0] ?? null;
+    }
+
+    return null;
+  };
+  const resolveCommentAuthorPhotoURL = (comment: ProfileComment) => {
+    if (comment.authorPhotoURL) {
+      return comment.authorPhotoURL;
+    }
+
+    if (
+      activeProfile &&
+      ((comment.authorUid && comment.authorUid === activeProfile.uid) ||
+        (typeof comment.authorProfileId === "number" &&
+          comment.authorProfileId === activeProfile.profileId))
+    ) {
+      return activeProfile.photoURL ?? null;
+    }
+
+    if (
+      visibleCurrentUser &&
+      ((comment.authorUid && comment.authorUid === visibleCurrentUser.uid) ||
+        (typeof comment.authorProfileId === "number" &&
+          comment.authorProfileId === visibleCurrentUser.profileId))
+    ) {
+      return visibleCurrentUser.photoURL ?? null;
+    }
+
+    return null;
+  };
   const canDeleteComment = (comment: ProfileComment) =>
     Boolean(
       visibleCurrentUser &&
@@ -1160,12 +1210,14 @@ export default function ProfilePage() {
                       const isDeletingComment = deletingCommentId === comment.id;
                       const showDeleteAction = canDeleteComment(comment);
                       const commentInitials = initialsFromText(comment.authorName);
-                      const commentAuthorStyle = roleCommentAuthorStyle(comment.authorAccentRole);
+                      const resolvedCommentAuthorRole = resolveCommentAuthorRole(comment);
+                      const resolvedCommentAuthorPhotoURL = resolveCommentAuthorPhotoURL(comment);
+                      const commentAuthorStyle = roleCommentAuthorStyle(resolvedCommentAuthorRole);
 
                       return <div key={comment.id} className="rounded-[24px] border border-[#1d1d1d] bg-[#090909] px-4 py-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-start gap-3">
-                            {comment.authorPhotoURL ? <img src={comment.authorPhotoURL} alt={comment.authorName} className="h-11 w-11 shrink-0 rounded-2xl border border-[#2a2022] object-cover shadow-[0_0_18px_rgba(255,183,197,0.1)]" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2a2022] bg-[#1a1012] text-[11px] font-black uppercase text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.08)]">{commentInitials}</div>}
+                            {resolvedCommentAuthorPhotoURL ? <img src={resolvedCommentAuthorPhotoURL} alt={comment.authorName} className="h-11 w-11 shrink-0 rounded-2xl border border-[#2a2022] object-cover shadow-[0_0_18px_rgba(255,183,197,0.1)]" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2a2022] bg-[#1a1012] text-[11px] font-black uppercase text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.08)]">{commentInitials}</div>}
                             <div className="min-w-0">
                               {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} style={commentAuthorStyle} className="block truncate text-sm font-semibold transition hover:text-white">{comment.authorName}</a> : <p style={commentAuthorStyle} className="truncate text-sm font-semibold">{comment.authorName}</p>}
                               <p className="mt-1 text-xs text-gray-500">{formatTime(comment.createdAt)}</p>
