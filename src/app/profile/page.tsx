@@ -66,7 +66,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v22";
+const PROFILE_BUILD_MARKER = "role-colors-v23";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -1200,7 +1200,7 @@ export default function ProfilePage() {
                 {[
                   ["Profile ID", String(activeProfile.profileId ?? "Not assigned")],
                   ["Profile Name", primaryName],
-                  ...(hasUsername || isOwner ? [["Login", hasUsername ? `@${activeProfile.login}` : "Not set yet"]] : []),
+                  ...(hasUsername || isOwner ? [["Логин", hasUsername ? `@${activeProfile.login}` : "Not set yet"]] : []),
                   ["Account Created", formatTime(activeProfile.creationTime)],
                 ].map(([label, value]) => <div key={label} className="rounded-[26px] border border-[#1d1d1d] bg-[#090909] p-5"><p className="font-mono text-[10px] uppercase tracking-[0.32em] text-gray-600">{label}</p><p className="mt-3 break-all text-sm leading-relaxed text-gray-300">{value}</p></div>)}
               </div>
