@@ -430,6 +430,10 @@ const firebaseModuleScript = `
         ? \`Profile #\${details.authorProfileId}\`
         : "Member"),
     authorPhotoURL: normalizeProfileCommentPhotoURL(details.authorPhotoURL),
+    authorAccentRole:
+      typeof details.authorAccentRole === "string"
+        ? normalizeRoleName(details.authorAccentRole)
+        : null,
     message: normalizeProfileCommentMessage(details.message),
     createdAt: typeof details.createdAt === "string" ? details.createdAt : null,
   });
@@ -539,6 +543,7 @@ const firebaseModuleScript = `
       return {
         ...comment,
         authorPhotoURL: resolvePhotoURL(authorDetails, comment.authorPhotoURL),
+        authorAccentRole: normalizeRoles(authorDetails?.roles ?? [])[0] ?? comment.authorAccentRole,
       };
     });
   };
@@ -1403,6 +1408,7 @@ const firebaseModuleScript = `
           typeof authorSnapshot?.profileId === "number" ? authorSnapshot.profileId : null,
         authorName,
         authorPhotoURL: authorSnapshot?.photoURL ?? user.photoURL ?? null,
+        authorAccentRole: normalizeRoles(authorSnapshot?.roles ?? [])[0] ?? "user",
         message: normalizedMessage,
         createdAt,
       };

@@ -30,6 +30,7 @@ type ProfileComment = {
   authorProfileId: number | null;
   authorName: string;
   authorPhotoURL: string | null;
+  authorAccentRole: string | null;
   message: string;
   createdAt: string | null;
 };
@@ -1119,13 +1120,14 @@ export default function ProfilePage() {
                       const isDeletingComment = deletingCommentId === comment.id;
                       const showDeleteAction = canDeleteComment(comment);
                       const commentInitials = initialsFromText(comment.authorName);
+                      const commentAuthorStyle = roleHeadlineStyle(comment.authorAccentRole);
 
                       return <div key={comment.id} className="rounded-[24px] border border-[#1d1d1d] bg-[#090909] px-4 py-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex min-w-0 items-start gap-3">
                             {comment.authorPhotoURL ? <img src={comment.authorPhotoURL} alt={comment.authorName} className="h-11 w-11 shrink-0 rounded-2xl border border-[#2a2022] object-cover shadow-[0_0_18px_rgba(255,183,197,0.1)]" /> : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#2a2022] bg-[#1a1012] text-[11px] font-black uppercase text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.08)]">{commentInitials}</div>}
                             <div className="min-w-0">
-                              {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} className="block truncate text-sm font-semibold text-[#ffd2dc] transition hover:text-white">{comment.authorName}</a> : <p className="truncate text-sm font-semibold text-[#ffd2dc]">{comment.authorName}</p>}
+                              {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} style={commentAuthorStyle} className="block truncate text-sm font-semibold transition hover:text-white">{comment.authorName}</a> : <p style={commentAuthorStyle} className="truncate text-sm font-semibold">{comment.authorName}</p>}
                               <p className="mt-1 text-xs text-gray-500">{formatTime(comment.createdAt)}</p>
                             </div>
                           </div>
