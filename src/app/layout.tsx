@@ -360,18 +360,18 @@ const firebaseModuleScript = `
   };
 
   const REMOVED_ROLE_NAMES = new Set([
-    "super administrator",
-    "administrator",
-    "tester",
     "subscriber",
   ]);
   const ROLE_SORT_ORDER = new Map([
     ["root", 0],
     ["co-owner", 1],
     ["support", 2],
-    ["sponsor", 3],
-    ["moderator", 4],
-    ["user", 5],
+    ["super administrator", 3],
+    ["administrator", 4],
+    ["sponsor", 5],
+    ["moderator", 6],
+    ["tester", 7],
+    ["user", 8],
   ]);
   const COMMENT_ACCENT_ROLE_ORDER = new Map([
     ["root", 0],

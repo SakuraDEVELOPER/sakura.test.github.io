@@ -175,9 +175,6 @@ const ROLE_CHIP_ORDER = new Map([
   ["user", 7],
 ]);
 const REMOVED_ROLE_NAMES = new Set([
-  "super administrator",
-  "administrator",
-  "tester",
   "subscriber",
 ]);
 

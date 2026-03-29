@@ -594,17 +594,17 @@ const roleCommentAuthorStyle = (role: string | null | undefined): CSSProperties 
 const ROLE_MANAGER_NAMES = new Set(["root"]);
 const COMMENT_MODERATOR_ROLE_NAMES = new Set(["root", "co-owner", "moderator"]);
 const REMOVED_ROLE_NAMES = new Set([
-  "super administrator",
-  "administrator",
-  "tester",
   "subscriber",
 ]);
 const EDITABLE_ROLE_OPTIONS = [
   "root",
   "co-owner",
   "support",
+  "super administrator",
+  "administrator",
   "sponsor",
   "moderator",
+  "tester",
   "user",
 ];
 const ROLE_DISPLAY_ORDER = new Map(
