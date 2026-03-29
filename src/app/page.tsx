@@ -870,13 +870,23 @@ function HeaderAuth() {
     }
   };
 
-  const navigateToProfile = (user: AuthUserSnapshot | null) => {
-    if (isEmailVerificationLocked(user ?? window.sakuraCurrentUserSnapshot ?? null)) {
+  const navigateToProfile = async (user: AuthUserSnapshot | null) => {
+    let nextUser = user ?? window.sakuraCurrentUserSnapshot ?? null;
+
+    if (isEmailVerificationLocked(nextUser) && window.sakuraFirebaseAuth) {
+      try {
+        const refreshedSnapshot = await window.sakuraFirebaseAuth.refreshVerificationStatus();
+        setCurrentUser(refreshedSnapshot);
+        nextUser = refreshedSnapshot;
+      } catch (error) {}
+    }
+
+    if (isEmailVerificationLocked(nextUser)) {
       window.dispatchEvent(new CustomEvent(EMAIL_VERIFICATION_LOCK_EVENT));
       return;
     }
 
-    window.location.assign(profileHref(user?.profileId ?? window.sakuraCurrentUserSnapshot?.profileId));
+    window.location.assign(profileHref(nextUser?.profileId ?? window.sakuraCurrentUserSnapshot?.profileId));
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -966,9 +976,8 @@ function HeaderAuth() {
       closeModal();
       if (isEmailVerificationLocked(snapshot)) {
         setIsVerificationModalOpen(true);
-        return;
       }
-      navigateToProfile(snapshot);
+      await navigateToProfile(snapshot);
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
     } finally {
@@ -1022,9 +1031,8 @@ function HeaderAuth() {
       closeModal();
       if (isEmailVerificationLocked(snapshot)) {
         setIsVerificationModalOpen(true);
-        return;
       }
-      navigateToProfile(snapshot);
+      await navigateToProfile(snapshot);
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
     } finally {
@@ -1074,7 +1082,7 @@ function HeaderAuth() {
             href={resolvedProfileHref}
             onClick={(event) => {
               event.preventDefault();
-              navigateToProfile(visibleUser);
+              void navigateToProfile(visibleUser);
             }}
             style={userAccentStyle}
             className="group inline-flex max-w-full items-center gap-3 rounded-full border py-1.5 pr-4 pl-1.5 transition hover:opacity-90"

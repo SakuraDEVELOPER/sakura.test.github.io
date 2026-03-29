@@ -1005,12 +1005,15 @@ export default function ProfilePage() {
   const canManageRoleAssignments = Boolean(visibleCurrentUser && canManageRoles(visibleCurrentUser.roles));
   const canOpenAdminPanel = Boolean(canManageRoleAssignments && activeProfile?.profileId);
   const isTargetBanned = activeProfile?.isBanned === true;
-  const isTargetVerificationLocked = Boolean(
-    activeProfile?.email &&
-      activeProfile.emailVerified === false &&
-      activeProfile.verificationRequired !== false
-  );
-  const isTargetVerified = Boolean(activeProfile?.email && !isTargetVerificationLocked);
+  const targetVerificationStatus = !activeProfile?.email
+    ? "no-email"
+    : activeProfile.emailVerified === true
+      ? "verified"
+      : activeProfile.emailVerified === false && activeProfile.verificationRequired !== false
+        ? "locked"
+        : "unknown";
+  const isTargetVerificationLocked = targetVerificationStatus === "locked";
+  const isTargetVerified = targetVerificationStatus === "verified";
   const isAdminSelfTarget = Boolean(canOpenAdminPanel && isOwner);
   const shouldShowPendingState =
     !authError &&
@@ -1027,7 +1030,37 @@ export default function ProfilePage() {
       return;
     }
 
-    router.replace("/");
+    const bridge = getWindowState().sakuraFirebaseAuth;
+
+    if (!bridge) {
+      router.replace("/");
+      return;
+    }
+
+    let isCancelled = false;
+
+    bridge
+      .refreshVerificationStatus()
+      .then((snapshot) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setCurrentUser(snapshot);
+
+        if (isEmailVerificationLockedForProfile(snapshot)) {
+          router.replace("/");
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          router.replace("/");
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [authReady, authStateSettled, isCurrentAccountVerificationLocked, router]);
 
   useEffect(() => {
@@ -2260,11 +2293,13 @@ export default function ProfilePage() {
                         <div>
                           <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Email Verification</p>
                           <p className="mt-2 text-sm font-semibold text-white">
-                            {!activeProfile.email
+                            {targetVerificationStatus === "no-email"
                               ? "No email attached"
-                              : isTargetVerificationLocked
+                              : targetVerificationStatus === "locked"
                                 ? "Verification required"
-                                : "Email verified"}
+                                : targetVerificationStatus === "verified"
+                                  ? "Email verified"
+                                  : "State unknown"}
                           </p>
                           {activeProfile.email ? (
                             <p className="mt-1 text-xs text-gray-500">{activeProfile.email}</p>
@@ -2274,18 +2309,22 @@ export default function ProfilePage() {
                         </div>
                         <span
                           className={`inline-flex shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                            !activeProfile.email
+                            targetVerificationStatus === "no-email"
                               ? "border-[#2b2b2b] bg-[#101010] text-gray-400"
-                              : isTargetVerificationLocked
+                              : targetVerificationStatus === "locked"
                                 ? "border-[#ffb7c5]/35 bg-[#140d11] text-[#ffb7c5]"
-                                : "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]"
+                                : targetVerificationStatus === "verified"
+                                  ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]"
+                                  : "border-[#6b5b22] bg-[#171308] text-[#f4e2a2]"
                           }`}
                         >
-                          {!activeProfile.email
+                          {targetVerificationStatus === "no-email"
                             ? "Unavailable"
-                            : isTargetVerificationLocked
+                            : targetVerificationStatus === "locked"
                               ? "Locked"
-                              : "Verified"}
+                              : targetVerificationStatus === "verified"
+                                ? "Verified"
+                                : "Unknown"}
                         </span>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -2305,7 +2344,7 @@ export default function ProfilePage() {
                         >
                           {isAdminVerificationSaving
                             ? "Saving..."
-                            : isTargetVerificationLocked
+                            : isTargetVerificationLocked || targetVerificationStatus === "unknown"
                               ? "Mark Verified"
                               : "Revoke Verification"}
                         </button>
