@@ -2073,7 +2073,7 @@ export default function ProfilePage() {
                                 {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} style={commentAuthorStyle} className="min-w-0 truncate text-sm font-semibold transition hover:text-white">{comment.authorName}</a> : <p style={commentAuthorStyle} className="min-w-0 truncate text-sm font-semibold">{comment.authorName}</p>}
                                 {isCommentEdited ? <span className="shrink-0 text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500">Edited</span> : null}
                               </div>
-                              <p className="mt-1 text-xs text-gray-500">{isCommentEdited ? `Edited ${formatTime(comment.updatedAt ?? comment.createdAt ?? null)}` : formatTime(comment.createdAt)}</p>
+                              <p className="mt-1 text-xs text-gray-500">{formatTime(comment.createdAt)}</p>
                             </div>
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
