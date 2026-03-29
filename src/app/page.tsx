@@ -611,6 +611,7 @@ function HeaderAuth() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [verificationSuccess, setVerificationSuccess] = useState<string | null>(null);
   const [isVerificationSending, setIsVerificationSending] = useState(false);
@@ -664,6 +665,7 @@ function HeaderAuth() {
     };
     const handleVerificationLock = () => {
       setFlashMessage("Подтвердите почту, чтобы открыть профиль и использовать аккаунт.");
+      setIsVerificationModalOpen(true);
     };
 
     const handleError = () => {
@@ -718,7 +720,7 @@ function HeaderAuth() {
   }, [currentUserId]);
 
   useEffect(() => {
-    if (!isModalOpen) {
+    if (!isModalOpen && !isVerificationModalOpen) {
       return;
     }
 
@@ -728,8 +730,14 @@ function HeaderAuth() {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setIsModalOpen(false);
-        setSubmitError(null);
+        if (isModalOpen) {
+          setIsModalOpen(false);
+          setSubmitError(null);
+        }
+
+        if (isVerificationModalOpen) {
+          setIsVerificationModalOpen(false);
+        }
       }
     };
 
@@ -739,7 +747,7 @@ function HeaderAuth() {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, isVerificationModalOpen]);
 
   useEffect(() => {
     if (!flashMessage) {
@@ -760,6 +768,12 @@ function HeaderAuth() {
     setVerificationSuccess(null);
   }, [visibleUser?.uid, visibleUser?.emailVerified, visibleUser?.verificationRequired]);
 
+  useEffect(() => {
+    if (!isVerificationLockedUser) {
+      setIsVerificationModalOpen(false);
+    }
+  }, [isVerificationLockedUser]);
+
   const openModal = (nextMode: AuthMode) => {
     requestFirebaseAuthBoot();
     setMode(nextMode);
@@ -774,6 +788,16 @@ function HeaderAuth() {
     setLoginName("");
     setPassword("");
     setConfirmPassword("");
+  };
+
+  const openVerificationModal = () => {
+    setVerificationError(null);
+    setVerificationSuccess(null);
+    setIsVerificationModalOpen(true);
+  };
+
+  const closeVerificationModal = () => {
+    setIsVerificationModalOpen(false);
   };
 
   const switchMode = (nextMode: AuthMode) => {
@@ -941,6 +965,7 @@ function HeaderAuth() {
 
       closeModal();
       if (isEmailVerificationLocked(snapshot)) {
+        setIsVerificationModalOpen(true);
         return;
       }
       navigateToProfile(snapshot);
@@ -996,6 +1021,7 @@ function HeaderAuth() {
       );
       closeModal();
       if (isEmailVerificationLocked(snapshot)) {
+        setIsVerificationModalOpen(true);
         return;
       }
       navigateToProfile(snapshot);
@@ -1035,6 +1061,15 @@ function HeaderAuth() {
     <>
       {visibleUser ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {isVerificationLockedUser ? (
+            <button
+              type="button"
+              onClick={openVerificationModal}
+              className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white"
+            >
+              Verify
+            </button>
+          ) : null}
           <a
             href={resolvedProfileHref}
             onClick={(event) => {
@@ -1105,44 +1140,6 @@ function HeaderAuth() {
 
       {authLoadError && !isModalOpen ? (
         <p className="basis-full text-right text-[11px] text-red-200/80">{authLoadError}</p>
-      ) : null}
-
-      {isVerificationLockedUser ? (
-        <div
-          id="email-verification"
-          className="basis-full rounded-[26px] border border-[#4d3024] bg-[linear-gradient(180deg,#1a110d_0%,#120d0a_100%)] px-5 py-4 text-left shadow-[0_0_35px_rgba(255,183,197,0.08)]"
-        >
-          <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-[#ffb7c5]">
-            Email Not Verified
-          </p>
-          <p className="mt-3 text-sm leading-relaxed text-[#f3d2c5]">
-            Подтвердите почту, чтобы открыть профиль, менять аккаунт и пользоваться комментариями.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleResendVerification}
-              disabled={isVerificationSending || isVerificationRefreshing}
-              className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isVerificationSending ? "Sending..." : "Resend Email"}
-            </button>
-            <button
-              type="button"
-              onClick={handleRefreshVerification}
-              disabled={isVerificationRefreshing || isVerificationSending}
-              className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isVerificationRefreshing ? "Checking..." : "I Verified My Email"}
-            </button>
-          </div>
-          {verificationError ? (
-            <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{verificationError}</p>
-          ) : null}
-          {verificationSuccess ? (
-            <p className="mt-3 text-xs leading-relaxed text-[#8ce5b2]">{verificationSuccess}</p>
-          ) : null}
-        </div>
       ) : null}
 
       {isModalOpen ? (
@@ -1361,6 +1358,76 @@ function HeaderAuth() {
                       : "Sign In"}
                 </button>
               </form>
+            </div>
+          </m.div>
+        </div>
+      ) : null}
+
+      {isVerificationModalOpen && isVerificationLockedUser ? (
+        <div className="fixed inset-0 z-[55] flex items-center justify-center p-4">
+          <button
+            type="button"
+            aria-label="Close verification modal"
+            onClick={closeVerificationModal}
+            className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+          />
+
+          <m.div
+            initial={{ opacity: 0, scale: 0.94, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.22 }}
+            className="relative z-10 w-full max-w-xl overflow-hidden rounded-[30px] border border-[#4d3024] bg-[linear-gradient(180deg,#1a110d_0%,#120d0a_100%)] shadow-[0_0_80px_rgba(255,183,197,0.08)]"
+          >
+            <div className="border-b border-[#3a221d] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.12),transparent_58%)] p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">
+                    Email Not Verified
+                  </p>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                    Verify Your Access
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-[#f3d2c5]">
+                    Подтвердите почту, чтобы открыть профиль, менять аккаунт и пользоваться комментариями.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeVerificationModal}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] text-lg text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={isVerificationSending || isVerificationRefreshing}
+                  className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isVerificationSending ? "Sending..." : "Resend Email"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRefreshVerification}
+                  disabled={isVerificationRefreshing || isVerificationSending}
+                  className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isVerificationRefreshing ? "Checking..." : "I Verified My Email"}
+                </button>
+              </div>
+
+              {verificationError ? (
+                <p className="mt-4 text-xs leading-relaxed text-[#ff9aa9]">{verificationError}</p>
+              ) : null}
+              {verificationSuccess ? (
+                <p className="mt-4 text-xs leading-relaxed text-[#8ce5b2]">{verificationSuccess}</p>
+              ) : null}
             </div>
           </m.div>
         </div>
