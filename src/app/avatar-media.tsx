@@ -1,6 +1,8 @@
 /* eslint-disable @next/next/no-img-element */
 
-import type { CSSProperties } from "react";
+"use client";
+
+import { useEffect, useState, type CSSProperties } from "react";
 
 export const AVATAR_FILE_ACCEPT =
   "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,.png,.jpg,.jpeg,.webp,.gif,.mp4,.webm";
@@ -36,6 +38,41 @@ export const isVideoAvatarSource = (value: string | null | undefined) => {
   );
 };
 
+const ANIMATED_DATA_URL_PATTERN = /^data:(image\/gif|image\/webp|video\/(?:mp4|webm))/i;
+
+const isAnimatedAvatarSource = (value: string | null | undefined) =>
+  typeof value === "string" &&
+  (
+    ANIMATED_DATA_URL_PATTERN.test(value.trim()) ||
+    /\.((gif)|(webp))(?:$|[?#])/i.test(value.trim())
+  );
+
+const dataUrlToBlob = (dataUrl: string) => {
+  const separatorIndex = dataUrl.indexOf(",");
+
+  if (separatorIndex === -1) {
+    throw new Error("Invalid data URL.");
+  }
+
+  const metadata = dataUrl.slice(0, separatorIndex);
+  const payload = dataUrl.slice(separatorIndex + 1);
+  const mimeMatch = metadata.match(/^data:([^;,]+)/i);
+  const mimeType = mimeMatch?.[1] ?? "application/octet-stream";
+
+  if (/;base64/i.test(metadata)) {
+    const binary = window.atob(payload);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+
+    return new Blob([bytes], { type: mimeType });
+  }
+
+  return new Blob([decodeURIComponent(payload)], { type: mimeType });
+};
+
 type AvatarMediaProps = {
   alt: string;
   className: string;
@@ -53,10 +90,36 @@ export function AvatarMedia({
   loading,
   decoding,
 }: AvatarMediaProps) {
-  if (isVideoAvatarSource(src)) {
+  const [resolvedSrc, setResolvedSrc] = useState(src);
+
+  useEffect(() => {
+    setResolvedSrc(src);
+
+    if (!ANIMATED_DATA_URL_PATTERN.test(src.trim())) {
+      return;
+    }
+
+    let objectUrl: string | null = null;
+
+    try {
+      objectUrl = URL.createObjectURL(dataUrlToBlob(src));
+      setResolvedSrc(objectUrl);
+    } catch {
+      setResolvedSrc(src);
+    }
+
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [src]);
+
+  if (isVideoAvatarSource(resolvedSrc)) {
     return (
       <video
-        src={src}
+        key={resolvedSrc}
+        src={resolvedSrc}
         aria-label={alt}
         title={alt}
         autoPlay
@@ -73,10 +136,11 @@ export function AvatarMedia({
 
   return (
     <img
-      src={src}
+      key={resolvedSrc}
+      src={resolvedSrc}
       alt={alt}
       loading={loading}
-      decoding={decoding}
+      decoding={isAnimatedAvatarSource(resolvedSrc) ? undefined : decoding}
       className={className}
       style={style}
     />
