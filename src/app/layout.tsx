@@ -648,6 +648,14 @@ const firebaseModuleScript = `
 
       return {
         ...comment,
+        authorUid:
+          typeof authorDetails?.uid === "string" && authorDetails.uid
+            ? authorDetails.uid
+            : comment.authorUid,
+        authorProfileId:
+          typeof authorDetails?.profileId === "number"
+            ? authorDetails.profileId
+            : comment.authorProfileId,
         authorPhotoURL: resolvePhotoURL(authorDetails, comment.authorPhotoURL),
         authorAccentRole: pickCommentAccentRole(
           authorDetails?.roles ?? [],
