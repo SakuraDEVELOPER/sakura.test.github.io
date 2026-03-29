@@ -1871,8 +1871,8 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-6 self-start xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] xl:items-start">
-              <div className="order-1 rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)] xl:self-start">
+            <div className="flex w-full flex-col gap-6 self-start">
+              {(!isOwner || !isProfileControlsOpen || activeProfile?.isBanned) ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Comments</p>
                 <p className="mt-3 text-sm leading-relaxed text-gray-400">A public wall for this profile. Only signed-in users can leave a message.</p>
 
@@ -1948,9 +1948,9 @@ export default function ProfilePage() {
                     })}
                   </div> : null}
                 </div>
-              </div>
+              </div> : null}
 
-              <div className="order-2 flex flex-col gap-6 xl:self-start">
+              <div className="flex flex-col gap-6">
               {isOwner && activeProfile ? <div className="rounded-[32px] border border-[#201517] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.14),transparent_72%),linear-gradient(180deg,#0d0d0d_0%,#090909_100%)] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Settings</p>
                 <h2 className="mt-3 text-[22px] font-black uppercase tracking-tight text-white">
