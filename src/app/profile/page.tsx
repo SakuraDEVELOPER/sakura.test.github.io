@@ -36,6 +36,8 @@ type ProfileComment = {
   authorPhotoURL: string | null;
   authorAccentRole: string | null;
   message: string;
+  mediaURL?: string | null;
+  mediaType?: string | null;
   createdAt: string | null;
   updatedAt?: string | null;
 };
@@ -44,7 +46,7 @@ type Bridge = {
   getProfileById: (profileId: number) => Promise<UserProfile | null>;
   getProfileByAuthorName: (authorName: string) => Promise<UserProfile | null>;
   getProfileComments: (profileId: number) => Promise<ProfileComment[]>;
-  addProfileComment: (profileId: number, message: string) => Promise<ProfileComment>;
+  addProfileComment: (profileId: number, message: string, mediaFile?: File | null) => Promise<ProfileComment>;
   updateProfileComment: (commentId: string, message: string) => Promise<ProfileComment | null>;
   deleteProfileComment: (commentId: string) => Promise<string | null>;
   resendVerificationEmail: () => Promise<UserProfile | null>;
@@ -82,6 +84,7 @@ const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
 const PROFILE_BUILD_MARKER = "role-colors-v43";
 const repoBasePath = "/sakura.github.io";
+const COMMENT_MEDIA_FILE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif";
 const restoreProfilePathScript = `
   (function () {
     try {
@@ -128,6 +131,22 @@ const getProfileActionErrorMessage = (error: unknown, fallback: string) => {
 
   if (code === "comments/update-forbidden") {
     return "You can only edit your own comments unless you are root.";
+  }
+
+  if (code === "comments/media-unsupported") {
+    return "Only PNG, JPG, WEBP, and GIF files are supported in comments.";
+  }
+
+  if (code === "comments/media-too-large") {
+    return "The selected comment media is too large to save.";
+  }
+
+  if (code === "comments/media-invalid") {
+    return "The selected media could not be prepared for the comment.";
+  }
+
+  if (code === "comments/write-denied") {
+    return "Comment media could not be saved. If attachments are enabled, allow mediaURL and mediaType in profileComments rules.";
   }
 
   if (code === "ban/self-forbidden") {
@@ -816,6 +835,8 @@ export default function ProfilePage() {
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState("");
+  const [commentMediaFile, setCommentMediaFile] = useState<File | null>(null);
+  const [commentMediaPreviewUrl, setCommentMediaPreviewUrl] = useState<string | null>(null);
   const [commentError, setCommentError] = useState<string | null>(null);
   const [commentSuccess, setCommentSuccess] = useState<string | null>(null);
   const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
@@ -825,6 +846,7 @@ export default function ProfilePage() {
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const editingCommentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const commentMediaInputRef = useRef<HTMLInputElement | null>(null);
 
   const syncTextareaHeight = (element: HTMLTextAreaElement | null) => {
     if (!element) return;
@@ -839,6 +861,20 @@ export default function ProfilePage() {
   useEffect(() => {
     syncTextareaHeight(commentTextareaRef.current);
   }, [commentInput]);
+
+  useEffect(() => {
+    if (!commentMediaFile) {
+      setCommentMediaPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(commentMediaFile);
+    setCommentMediaPreviewUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [commentMediaFile]);
 
   useEffect(() => {
     syncTextareaHeight(editingCommentTextareaRef.current);
@@ -1804,8 +1840,8 @@ export default function ProfilePage() {
       return;
     }
 
-    if (!nextComment) {
-      setCommentError("Write a comment before sending.");
+    if (!nextComment && !commentMediaFile) {
+      setCommentError("Write a comment or attach media before sending.");
       return;
     }
 
@@ -1814,14 +1850,32 @@ export default function ProfilePage() {
     setIsCommentSubmitting(true);
 
     try {
-      const savedComment = await bridge.addProfileComment(activeProfile.profileId, nextComment);
+      const savedComment = await bridge.addProfileComment(activeProfile.profileId, nextComment, commentMediaFile);
       setComments((currentComments) => [savedComment, ...currentComments.filter((comment) => comment.id !== savedComment.id)]);
       setCommentInput("");
+      setCommentMediaFile(null);
+      if (commentMediaInputRef.current) {
+        commentMediaInputRef.current.value = "";
+      }
       setCommentSuccess("Comment posted.");
     } catch (error) {
       setCommentError(getProfileActionErrorMessage(error, "Could not post this comment."));
     } finally {
       setIsCommentSubmitting(false);
+    }
+  };
+
+  const handleCommentMediaChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0] ?? null;
+    setCommentError(null);
+    setCommentSuccess(null);
+    setCommentMediaFile(nextFile);
+  };
+
+  const clearCommentMediaSelection = () => {
+    setCommentMediaFile(null);
+    if (commentMediaInputRef.current) {
+      commentMediaInputRef.current.value = "";
     }
   };
 
@@ -2025,8 +2079,19 @@ export default function ProfilePage() {
                       <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">New Comment</span>
                       <textarea ref={commentTextareaRef} value={commentInput} maxLength={280} rows={3} onChange={(event) => setCommentInput(event.target.value)} onInput={(event) => syncTextareaHeight(event.currentTarget)} className="w-full resize-none overflow-hidden rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder={`Write something for ${primaryName}...`} />
                     </label>
+                    <input ref={commentMediaInputRef} type="file" accept={COMMENT_MEDIA_FILE_ACCEPT} onChange={handleCommentMediaChange} className="hidden" />
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <button type="button" onClick={() => commentMediaInputRef.current?.click()} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">
+                        Attach Photo / GIF
+                      </button>
+                      {commentMediaFile ? <span className="min-w-0 truncate text-xs text-gray-400">{commentMediaFile.name}</span> : null}
+                      {commentMediaFile ? <button type="button" onClick={clearCommentMediaSelection} className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white">Remove</button> : null}
+                    </div>
+                    {commentMediaPreviewUrl ? <div className="mt-3 overflow-hidden rounded-[22px] border border-[#232323] bg-[#050505]">
+                      <img src={commentMediaPreviewUrl} alt="Selected comment media preview" className="block max-h-[320px] w-full object-contain" />
+                    </div> : null}
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                      <button type="submit" disabled={isCommentSubmitting || !commentInput.trim()} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isCommentSubmitting ? "Posting..." : "Post Comment"}</button>
+                      <button type="submit" disabled={isCommentSubmitting || (!commentInput.trim() && !commentMediaFile)} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isCommentSubmitting ? "Posting..." : "Post Comment"}</button>
                       <span className="text-xs text-gray-500">{commentInput.trim().length}/280</span>
                     </div>
                     {commentError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{commentError}</p> : null}
@@ -2093,8 +2158,11 @@ export default function ProfilePage() {
                             </div>
                             <span className="text-xs text-gray-500">{editingCommentMessage.trim().length}/280</span>
                           </div>
-                        </div> : <div className="mt-3">
-                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">{comment.message}</p>
+                        </div> : <div className="mt-3 space-y-3">
+                          {comment.mediaURL ? <div className="overflow-hidden rounded-[22px] border border-[#232323] bg-[#050505]">
+                            <img src={comment.mediaURL} alt={`${comment.authorName} comment attachment`} loading="lazy" className="block max-h-[360px] w-full object-contain" />
+                          </div> : null}
+                          {comment.message ? <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">{comment.message}</p> : null}
                         </div>}
                       </div>;
                     })}

@@ -78,6 +78,12 @@
   const PASSTHROUGH_AVATAR_CONTENT_TYPES = new Set(["image/gif", "image/webp", "video/mp4", "video/webm"]);
   const STORAGE_AVATAR_CONTENT_TYPES = new Set(["image/gif", "image/webp", "video/mp4", "video/webm"]);
   const PROFILE_COMMENT_MAX_LENGTH = 280;
+  const PROFILE_COMMENT_MEDIA_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+  const PROFILE_COMMENT_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+  const PROFILE_COMMENT_GIF_MAX_BYTES = 500 * 1024;
+  const PROFILE_COMMENT_MEDIA_MAX_DIMENSION = 960;
+  const PROFILE_COMMENT_MEDIA_EXPORT_QUALITY = 0.74;
+  const PROFILE_COMMENT_MEDIA_MAX_DATA_URL_LENGTH = 850000;
   const PROFILE_LOOKUP_TIMEOUT_MS = 5000;
   const DISPLAY_NAME_MAX_LENGTH = 48;
   const USER_UPDATE_EVENT = "sakura-user-update";
@@ -218,6 +224,104 @@
     }
 
     return canvas.toDataURL("image/jpeg", AVATAR_EXPORT_QUALITY);
+  };
+
+  const createInlineCommentMedia = async (file) => {
+    if (!(file instanceof File)) {
+      return null;
+    }
+
+    if (!PROFILE_COMMENT_MEDIA_CONTENT_TYPES.has(file.type)) {
+      throw createFirebaseError(
+        "comments/media-unsupported",
+        "Only PNG, JPG, WEBP, and GIF files are supported in comments."
+      );
+    }
+
+    if (file.type === "image/gif") {
+      if (file.size > PROFILE_COMMENT_GIF_MAX_BYTES) {
+        throw createFirebaseError(
+          "comments/media-too-large",
+          "GIF attachments for comments must stay under 500 KB."
+        );
+      }
+
+      const mediaURL = await readFileAsDataUrl(file);
+
+      if (mediaURL.length > PROFILE_COMMENT_MEDIA_MAX_DATA_URL_LENGTH) {
+        throw createFirebaseError(
+          "comments/media-too-large",
+          "The selected GIF is too large to save in a comment."
+        );
+      }
+
+      return {
+        mediaURL,
+        mediaType: file.type,
+      };
+    }
+
+    if (file.size > PROFILE_COMMENT_MEDIA_MAX_BYTES) {
+      throw createFirebaseError(
+        "comments/media-too-large",
+        "Comment images must stay under 5 MB before compression."
+      );
+    }
+
+    const image = await loadAvatarSource(file);
+    const width = image.naturalWidth || image.width || 0;
+    const height = image.naturalHeight || image.height || 0;
+
+    if (!width || !height) {
+      throw createFirebaseError(
+        "comments/media-invalid",
+        "The selected image is empty."
+      );
+    }
+
+    const scale = Math.min(
+      1,
+      PROFILE_COMMENT_MEDIA_MAX_DIMENSION / Math.max(width, height)
+    );
+    const canvas = document.createElement("canvas");
+
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+
+    const context = canvas.getContext("2d");
+
+    if (!context) {
+      throw createFirebaseError(
+        "comments/media-invalid",
+        "Could not prepare the selected image."
+      );
+    }
+
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+    if ("close" in image && typeof image.close === "function") {
+      image.close();
+    }
+
+    const preferredMediaURL = canvas.toDataURL("image/webp", PROFILE_COMMENT_MEDIA_EXPORT_QUALITY);
+    const mediaURL = preferredMediaURL.startsWith("data:image/webp")
+      ? preferredMediaURL
+      : canvas.toDataURL("image/jpeg", PROFILE_COMMENT_MEDIA_EXPORT_QUALITY);
+    const mediaType = mediaURL.startsWith("data:image/webp") ? "image/webp" : "image/jpeg";
+
+    if (mediaURL.length > PROFILE_COMMENT_MEDIA_MAX_DATA_URL_LENGTH) {
+      throw createFirebaseError(
+        "comments/media-too-large",
+        "The selected image is too large to save in a comment."
+      );
+    }
+
+    return {
+      mediaURL,
+      mediaType,
+    };
   };
 
   const getAvatarStorageExtension = (file) => {
@@ -527,6 +631,12 @@
     normalizeProfileCommentAuthorName(value).toLocaleLowerCase();
   const normalizeProfileCommentPhotoURL = (value) =>
     typeof value === "string" && value ? value : null;
+  const normalizeProfileCommentMediaURL = (value) =>
+    typeof value === "string" && value ? value : null;
+  const normalizeProfileCommentMediaType = (value) =>
+    typeof value === "string" && PROFILE_COMMENT_MEDIA_CONTENT_TYPES.has(value)
+      ? value
+      : null;
   const normalizeProfileCommentCreatedAt = (value) => {
     if (typeof value === "string" && value) {
       return value;
@@ -570,6 +680,8 @@
         ? normalizeRoleName(details.authorAccentRole)
         : null,
     message: normalizeProfileCommentMessage(details.message),
+    mediaURL: normalizeProfileCommentMediaURL(details.mediaURL),
+    mediaType: normalizeProfileCommentMediaType(details.mediaType),
     createdAt: normalizeProfileCommentCreatedAt(details.createdAt),
     updatedAt: normalizeProfileCommentCreatedAt(details.updatedAt),
   });
@@ -2017,8 +2129,10 @@
             .filter(
               (comment) =>
                 comment.profileId === profileId &&
-                typeof comment.message === "string" &&
-                comment.message
+                (
+                  (typeof comment.message === "string" && comment.message) ||
+                  (typeof comment.mediaURL === "string" && comment.mediaURL)
+                )
             )
         );
 
@@ -2065,17 +2179,20 @@
       }
     };
 
-    const addProfileComment = async (profileId, message) => {
+    const addProfileComment = async (profileId, message, mediaFile = null) => {
       if (!Number.isInteger(profileId) || profileId <= 0) {
         throw createFirebaseError("profile/invalid-id", "Profile id must be a positive number.");
       }
 
       const normalizedMessage = normalizeProfileCommentMessage(message);
+      const commentMedia = mediaFile instanceof File
+        ? await createInlineCommentMedia(mediaFile)
+        : null;
 
-      if (!normalizedMessage) {
+      if (!normalizedMessage && !commentMedia) {
         throw createFirebaseError(
           "comments/empty-message",
-          "Write a comment before sending."
+          "Write a comment or attach media before sending."
         );
       }
 
@@ -2120,6 +2237,8 @@
           typeof authorSnapshot?.profileId === "number" ? authorSnapshot.profileId : null,
         authorName,
         message: normalizedMessage,
+        mediaURL: commentMedia?.mediaURL ?? null,
+        mediaType: commentMedia?.mediaType ?? null,
         createdAt,
       });
       const displayCommentPayload = {
@@ -2139,6 +2258,8 @@
             typeof authorSnapshot?.profileId === "number" ? authorSnapshot.profileId : null,
           authorName,
           message: normalizedMessage,
+          mediaURL: commentMedia?.mediaURL ?? null,
+          mediaType: commentMedia?.mediaType ?? null,
         }),
         createdAt: serverTimestamp(),
       };
