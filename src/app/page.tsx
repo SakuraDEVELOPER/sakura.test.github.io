@@ -1290,8 +1290,6 @@ export default function Home() {
           />
         </section>
 
-        <BottomInfoSection />
-        <FeatureShowcase />
         <SetupSteps />
         <DownloadSection />
       </div>
