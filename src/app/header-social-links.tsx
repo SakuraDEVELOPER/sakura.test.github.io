@@ -102,14 +102,14 @@ export function HeaderSocialLinks({
   return (
     <div className="flex items-center gap-3">
       {showLabel ? (
-        <span className="text-[10px] font-mono uppercase tracking-[0.24em] text-[#8f98ab]">
+        <span className="text-[10px] font-mono uppercase tracking-[0.24em] text-[#ffb7c5]">
           Socials:
         </span>
       ) : null}
-      <div className="flex items-center gap-3 rounded-[18px] border border-[#1f1f1f] bg-[#0c0c0d] px-4 py-2">
+      <div className="flex items-center gap-3 rounded-[18px] border border-[#3a2329] bg-[#120d10] px-4 py-2 shadow-[0_0_24px_rgba(255,183,197,0.08)]">
         {SOCIAL_LINKS.map((link) => {
           const commonClassName =
-            "inline-flex h-5 w-5 items-center justify-center text-[#8e95a6] transition duration-200";
+            "inline-flex h-5 w-5 items-center justify-center text-[#ffb7c5] transition duration-200";
 
           if (!link.href) {
             return (
@@ -117,7 +117,7 @@ export function HeaderSocialLinks({
                 key={link.id}
                 title={`${link.label} soon`}
                 aria-label={`${link.label} coming soon`}
-                className={`${commonClassName} cursor-default opacity-70`}
+                className={`${commonClassName} cursor-default opacity-65`}
               >
                 {link.icon}
               </span>
@@ -131,7 +131,7 @@ export function HeaderSocialLinks({
               target="_blank"
               rel="noreferrer"
               aria-label={link.label}
-              className={`${commonClassName} hover:text-[#ffb7c5]`}
+              className={`${commonClassName} hover:text-[#ffd7e1]`}
             >
               {link.icon}
             </a>

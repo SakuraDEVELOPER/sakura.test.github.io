@@ -1197,8 +1197,8 @@ export default function Home() {
         <SakuraBackground />
 
       <div className="relative z-10">
-        <nav className="flex flex-col gap-5 border-b border-[#1a1a1a] px-8 py-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex flex-wrap items-center gap-3">
+        <nav className="grid grid-cols-1 gap-5 border-b border-[#1a1a1a] px-8 py-6 md:grid-cols-[1fr_auto_1fr] md:items-center">
+          <div className="flex flex-wrap items-center gap-3 md:justify-self-start">
             <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-90">
             <span className="text-2xl text-[#ffb7c5] drop-shadow-[0_0_10px_rgba(255,183,197,0.5)]">
               🌸
@@ -1207,10 +1207,13 @@ export default function Home() {
               Sa<span className="text-[#ffb7c5]">kura</span>
             </h1>
             </Link>
+          </div>
+
+          <div className="flex justify-start md:justify-center">
             <HeaderSocialLinks showLabel />
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-3 text-sm font-medium text-gray-400">
+          <div className="flex flex-wrap items-center justify-start gap-3 text-sm font-medium text-gray-400 md:justify-self-end md:justify-end">
             <HeaderAuth />
           </div>
         </nav>
