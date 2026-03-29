@@ -66,7 +66,7 @@
 
   const LOGIN_MAX_LENGTH = 24;
   const LOGIN_MIN_LENGTH = 3;
-  const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
   const MAX_PASSTHROUGH_AVATAR_BYTES = 700 * 1024;
   const AVATAR_STORAGE_UPLOAD_TIMEOUT_MS = 2500;
   const STORAGE_AVATAR_UPLOADS_ENABLED = false;
@@ -2078,7 +2078,7 @@
       }
 
       if (file.size > MAX_AVATAR_BYTES) {
-        throw createFirebaseError("storage/file-too-large", "Avatar must be 10 MB or smaller.");
+        throw createFirebaseError("storage/file-too-large", "PNG and JPG avatars must be 5 MB or smaller.");
       }
 
       if (PASSTHROUGH_AVATAR_CONTENT_TYPES.has(file.type) && file.size > MAX_PASSTHROUGH_AVATAR_BYTES) {
@@ -2338,7 +2338,7 @@
       }
 
       if (file.size > MAX_AVATAR_BYTES) {
-        throw createFirebaseError("storage/file-too-large", "Avatar must be 10 MB or smaller.");
+        throw createFirebaseError("storage/file-too-large", "PNG and JPG avatars must be 5 MB or smaller.");
       }
 
       if (PASSTHROUGH_AVATAR_CONTENT_TYPES.has(file.type) && file.size > MAX_PASSTHROUGH_AVATAR_BYTES) {

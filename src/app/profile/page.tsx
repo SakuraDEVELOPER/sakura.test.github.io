@@ -74,7 +74,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v32";
+const PROFILE_BUILD_MARKER = "role-colors-v33";
 const repoBasePath = "/sakura.github.io";
 const restoreProfilePathScript = `
   (function () {
@@ -1561,7 +1561,7 @@ export default function ProfilePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Avatar</p>
                 <div className="mt-5 rounded-[24px] border border-[#1d1d1d] bg-[#090909] p-4">
                   <p className="text-sm font-semibold text-white">{activeProfile.photoURL ? "Custom Avatar" : "Generated Avatar"}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-gray-400">Upload, replace, or delete your avatar here. PNG and JPG support up to 10 MB. GIF, WEBP, MP4, and WEBM are also supported with a smaller limit.</p>
+                  <p className="mt-2 text-xs leading-relaxed text-gray-400">Upload, replace, or delete your avatar here. PNG and JPG support up to 5 MB. GIF, WEBP, MP4, and WEBM are also supported with a smaller limit.</p>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarUploading || isAvatarDeleting} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">
                       {isAvatarUploading ? "Uploading..." : activeProfile.photoURL ? "Replace Avatar" : "Upload Avatar"}
@@ -1860,7 +1860,7 @@ export default function ProfilePage() {
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
                       <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Avatar</p>
-                      <p className="mt-3 text-xs leading-relaxed text-gray-400">Upload, replace, or delete the avatar for this account. PNG and JPG support up to 10 MB. GIF, WEBP, MP4, and WEBM are also supported with a smaller limit.</p>
+                      <p className="mt-3 text-xs leading-relaxed text-gray-400">Upload, replace, or delete the avatar for this account. PNG and JPG support up to 5 MB. GIF, WEBP, MP4, and WEBM are also supported with a smaller limit.</p>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
                           type="button"
