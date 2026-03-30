@@ -3922,56 +3922,77 @@ export default function ProfilePage() {
           {shouldPlayProfileThemeSong ? (
             <div className="fixed bottom-6 left-6 z-40 flex flex-col items-start gap-3">
               {isProfileThemePanelOpen ? (
-                <div className="w-[min(88vw,280px)] rounded-[22px] border border-[#2a171c] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.12),transparent_62%),rgba(9,9,9,0.96)] px-4 py-4 shadow-[0_0_34px_rgba(255,183,197,0.12)] backdrop-blur-sm">
+                <div className="w-[min(88vw,272px)] rounded-[24px] border border-[#372028] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.18),transparent_54%),linear-gradient(180deg,rgba(22,13,17,0.98)_0%,rgba(8,8,9,0.98)_100%)] p-4 shadow-[0_0_38px_rgba(255,183,197,0.14)] backdrop-blur-md">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.32em] text-[#ffb7c5]">Profile Theme</p>
-                      <p className="mt-2 truncate text-sm font-semibold text-white">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.34em] text-[#ffb7c5]">
+                        Profile Theme
+                      </p>
+                      <p className="mt-2 truncate text-[15px] font-semibold tracking-[-0.02em] text-white">
                         {profileThemeTitle ?? "Profile Theme"}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void handleProfileThemeToggle();
-                      }}
-                      className="inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full border border-[#ffb7c5]/35 bg-[linear-gradient(180deg,#241118_0%,#140d11_100%)] px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.16)] transition hover:border-[#ffb7c5]/60 hover:text-white"
+                    <span
+                      className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+                        profileThemeIsPlaying
+                          ? "border-[#ffb7c5]/40 bg-[#1b1015] text-[#ffb7c5] shadow-[0_0_16px_rgba(255,183,197,0.16)]"
+                          : "border-[#2d2d2d] bg-[#111111] text-gray-400"
+                      }`}
                     >
-                      {profileThemeIsPlaying ? "Pause" : "Play"}
-                    </button>
+                      {profileThemeIsPlaying ? "Playing" : "Paused"}
+                    </span>
                   </div>
-                  <div className="mt-3">
-                    <input
-                      type="range"
-                      min={0}
-                      max={profileThemeDuration > 0 ? profileThemeDuration : 0}
-                      step={0.1}
-                      value={Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime)}
-                      onChange={handleProfileThemeSeek}
-                      disabled={profileThemeDuration <= 0}
-                      className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#211317] accent-[#ffb7c5] disabled:cursor-not-allowed disabled:opacity-40"
-                    />
-                    <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-gray-400">
-                      <span>{formatAudioClock(profileThemeCurrentTime)}</span>
-                      <span>{formatAudioClock(profileThemeDuration)}</span>
+                  <div className="mt-4 rounded-[20px] border border-[#2a181d] bg-[linear-gradient(180deg,rgba(18,11,14,0.96)_0%,rgba(11,11,12,0.96)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,183,197,0.04)]">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleProfileThemeToggle();
+                        }}
+                        className={`inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold uppercase tracking-[0.14em] transition ${
+                          profileThemeIsPlaying
+                            ? "border-[#ffb7c5]/45 bg-[#ffb7c5] text-black shadow-[0_0_22px_rgba(255,183,197,0.22)] hover:bg-[#ffc8d3]"
+                            : "border-[#ffb7c5]/35 bg-[linear-gradient(180deg,#241118_0%,#140d11_100%)] text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.16)] hover:border-[#ffb7c5]/60 hover:text-white"
+                        }`}
+                      >
+                        {profileThemeIsPlaying ? "Pause" : "Play"}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-3 text-[10px] font-medium text-gray-400">
+                          <span>{formatAudioClock(profileThemeCurrentTime)}</span>
+                          <span>{formatAudioClock(profileThemeDuration)}</span>
+                        </div>
+                        <input
+                          type="range"
+                          min={0}
+                          max={profileThemeDuration > 0 ? profileThemeDuration : 0}
+                          step={0.1}
+                          value={Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime)}
+                          onChange={handleProfileThemeSeek}
+                          disabled={profileThemeDuration <= 0}
+                          className="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#2a171c] accent-[#ffb7c5] disabled:cursor-not-allowed disabled:opacity-40"
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center gap-3">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#ffb7c5]">
-                      Vol
-                    </span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={profileThemeVolume}
-                      onChange={handleProfileThemeVolumeChange}
-                      className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#211317] accent-[#ffb7c5]"
-                    />
-                    <span className="w-9 text-right text-[10px] font-medium text-gray-400">
-                      {Math.round(profileThemeVolume * 100)}%
-                    </span>
+                  <div className="mt-3 rounded-[18px] border border-[#26151a] bg-[linear-gradient(180deg,rgba(16,10,13,0.94)_0%,rgba(10,10,11,0.94)_100%)] px-3 py-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.26em] text-[#ffb7c5]">
+                        Volume
+                      </span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        value={profileThemeVolume}
+                        onChange={handleProfileThemeVolumeChange}
+                        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#2a171c] accent-[#ffb7c5]"
+                      />
+                      <span className="w-9 text-right text-[10px] font-medium text-gray-400">
+                        {Math.round(profileThemeVolume * 100)}%
+                      </span>
+                    </div>
                   </div>
                 </div>
               ) : null}
@@ -3979,12 +4000,17 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => setIsProfileThemePanelOpen((currentValue) => !currentValue)}
                 aria-expanded={isProfileThemePanelOpen}
-                className={`inline-flex items-center justify-center rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] shadow-[0_0_24px_rgba(255,183,197,0.12)] transition ${
+                className={`inline-flex items-center gap-2 justify-center rounded-full border px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] shadow-[0_0_24px_rgba(255,183,197,0.12)] transition ${
                   isProfileThemePanelOpen
                     ? "border-[#ffb7c5]/45 bg-[#ffb7c5] text-black hover:bg-[#ffc8d3]"
                     : "border-[#ffb7c5]/35 bg-[#140d11] text-[#ffb7c5] hover:border-[#ffb7c5]/60 hover:text-white"
                 }`}
               >
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    profileThemeIsPlaying ? "bg-[#ff7da0] shadow-[0_0_14px_rgba(255,125,160,0.9)]" : "bg-current/60"
+                  }`}
+                />
                 Music
               </button>
             </div>
