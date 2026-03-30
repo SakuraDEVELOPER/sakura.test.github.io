@@ -143,7 +143,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v59";
+const PROFILE_BUILD_MARKER = "role-colors-v60";
 const COMMENT_MENTION_PATTERN = /@([A-Za-z\u0400-\u04FF0-9._-]{3,24})/g;
 const COMMENT_MENTION_DRAFT_PATTERN = /(^|[\s([{"'`])@([A-Za-z\u0400-\u04FF0-9._-]{2,24})$/;
 const COMMENT_MENTION_TOKEN_CHARACTER_PATTERN = /[A-Za-z\u0400-\u04FF0-9._-]/;
@@ -3341,7 +3341,7 @@ export default function ProfilePage() {
               <div className="border-b border-[#1b1b1b] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.16),transparent_55%)] px-8 py-8">
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                   <div className="flex shrink-0 flex-col items-center gap-3">
-                  {activeProfile.photoURL ? <AvatarMedia src={activeProfile.photoURL} alt={primaryName} decoding="async" className="h-24 w-24 rounded-[28px] border border-[#2c2023] object-cover shadow-[0_0_30px_rgba(255,183,197,0.14)]" /> : <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-[#2c2023] bg-[#1a1012] text-2xl font-black uppercase text-[#ffb7c5] shadow-[0_0_30px_rgba(255,183,197,0.14)]">{initials}</div>}
+                  {activeProfile.photoURL ? <AvatarMedia src={activeProfile.photoURL} alt={primaryName} decoding="async" className="h-[104px] w-[104px] rounded-[30px] border border-[#2c2023] object-cover shadow-[0_0_30px_rgba(255,183,197,0.14)]" /> : <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[30px] border border-[#2c2023] bg-[#1a1012] text-2xl font-black uppercase text-[#ffb7c5] shadow-[0_0_30px_rgba(255,183,197,0.14)]">{initials}</div>}
                   <span className={`inline-flex min-w-[104px] shrink-0 justify-center rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActiveProfileOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{isActiveProfileOnline ? "Online" : "Offline"}</span>
                   </div>
                   <div className="min-w-0">
