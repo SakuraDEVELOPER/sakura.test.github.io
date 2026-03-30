@@ -3414,14 +3414,14 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
-              <div className="grid gap-3 px-8 py-6">
+              <div className="px-8 py-6">
                 {[
                   ["Account Created", formatTime(activeProfile.creationTime)],
                 ].map(([label, value]) => (
                   <div
                     key={label}
                     style={metaCardStyle}
-                    className="min-w-0 rounded-[26px] border p-4 backdrop-blur-sm md:max-w-[340px]"
+                    className="inline-block max-w-full rounded-[26px] border p-4 backdrop-blur-sm"
                   >
                     <p
                       style={metaLabelStyle}
