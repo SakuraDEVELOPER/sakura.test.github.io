@@ -146,10 +146,10 @@ const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
 const PROFILE_BUILD_MARKER = "role-colors-v61";
 const PROFILE_THEME_TITLE_BY_PROFILE_ID = new Map<number, string>([
   [1, "Pixies — Where Is My Mind"],
+  [2, "Face — Forever Young"],
+  [3, "Cyberpunk"],
   [4, "Pixies — Where Is My Mind"],
-  [6, "Pixies — Where Is My Mind"],
-  [2, "Profile 2 Theme"],
-  [8, "Cyberpunk"],
+  [5, "Pixies — Where Is My Mind"],
 ]);
 const COMMENT_MENTION_PATTERN = /@([A-Za-z\u0400-\u04FF0-9._-]{3,24})/g;
 const COMMENT_MENTION_DRAFT_PATTERN = /(^|[\s([{"'`])@([A-Za-z\u0400-\u04FF0-9._-]{2,24})$/;
@@ -157,10 +157,10 @@ const COMMENT_MENTION_TOKEN_CHARACTER_PATTERN = /[A-Za-z\u0400-\u04FF0-9._-]/;
 const repoBasePath = "/sakura.github.io";
 const PROFILE_THEME_SONG_BY_PROFILE_ID = new Map<number, string>([
   [1, `${repoBasePath}/music/where-is-my-mind.mp3`],
+  [2, `${repoBasePath}/music/face-forever-young.mp3`],
+  [3, `${repoBasePath}/music/cyberpunk.mp3`],
   [4, `${repoBasePath}/music/where-is-my-mind.mp3`],
-  [6, `${repoBasePath}/music/where-is-my-mind.mp3`],
-  [2, `${repoBasePath}/music/profile-2-theme.mp3`],
-  [8, `${repoBasePath}/music/cyberpunk.mp3`],
+  [5, `${repoBasePath}/music/where-is-my-mind.mp3`],
 ]);
 const COMMENT_MEDIA_FILE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.mp4,.webm";
 const PRESENCE_ACTIVE_WINDOW_MS = 90 * 1000;
