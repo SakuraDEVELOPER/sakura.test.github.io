@@ -39,6 +39,8 @@ type ProfileComment = {
   message: string;
   mediaURL?: string | null;
   mediaType?: string | null;
+  mediaPath?: string | null;
+  mediaSize?: number | null;
   createdAt: string | null;
   updatedAt?: string | null;
 };
