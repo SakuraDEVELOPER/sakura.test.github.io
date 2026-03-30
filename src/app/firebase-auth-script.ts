@@ -3486,10 +3486,56 @@
         let verificationEmailSent = false;
 
         try {
-          const snapshot = await resolveUserSnapshot(credentials.user, {
+          let snapshot = await resolveUserSnapshot(credentials.user, {
             requestedLogin: login,
             preferredDisplayName: preferredDisplayName || preferredLogin,
           });
+          const storedRegistrationSnapshot = await getDoc(userRefFor(credentials.user.uid)).catch(
+            (error) => {
+              if (!isPermissionDeniedError(error)) {
+                throw error;
+              }
+
+              return null;
+            }
+          );
+          const storedRegistrationData = storedRegistrationSnapshot?.exists()
+            ? storedRegistrationSnapshot.data()
+            : null;
+          const storedRegistrationLogin =
+            typeof storedRegistrationData?.login === "string" ? storedRegistrationData.login : null;
+          const storedRegistrationLoginLower =
+            typeof storedRegistrationData?.loginLower === "string"
+              ? storedRegistrationData.loginLower
+              : null;
+
+          if ((!storedRegistrationLogin || !storedRegistrationLoginLower) && preferredLogin) {
+            const recoveredLoginDetails = await resolveAvailableLogin(
+              snapshot?.login || preferredLogin,
+              credentials.user.uid
+            );
+
+            await setDoc(
+              userRefFor(credentials.user.uid),
+              {
+                login: recoveredLoginDetails.login,
+                loginLower: recoveredLoginDetails.loginLower,
+                updatedAt: new Date().toISOString(),
+              },
+              { merge: true }
+            );
+
+            snapshot = publishUserSnapshot(
+              toUserSnapshot(credentials.user, {
+                ...(window.sakuraCurrentUserSnapshot ?? snapshot ?? {}),
+                ...storedRegistrationData,
+                login: recoveredLoginDetails.login,
+                loginLower: recoveredLoginDetails.loginLower,
+                displayName:
+                  snapshot?.displayName ?? preferredDisplayName ?? recoveredLoginDetails.login,
+              })
+            );
+          }
 
           const registrationDisplayName =
             snapshot?.displayName ?? preferredDisplayName ?? snapshot?.login ?? preferredLogin;
