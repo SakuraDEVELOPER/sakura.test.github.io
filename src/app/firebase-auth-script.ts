@@ -3636,6 +3636,7 @@
           typeof snapshot?.displayName === "string" ? snapshot.displayName : null,
         login: typeof snapshot?.login === "string" ? snapshot.login : null,
         photoURL: typeof snapshot?.photoURL === "string" ? snapshot.photoURL : null,
+        accentRole: pickCommentAuthorAccentRole(snapshot?.roles ?? []) ?? null,
         presence: snapshot?.presence
           ? {
               lastSeenAt:

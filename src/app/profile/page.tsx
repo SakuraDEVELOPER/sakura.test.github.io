@@ -121,6 +121,7 @@ type Bridge = {
       displayName: string | null;
       login: string | null;
       photoURL: string | null;
+      accentRole?: string | null;
       presence?: { lastSeenAt: string | null } | null;
     }[]
   >;
@@ -309,6 +310,39 @@ const formatAudioClock = (value: number) => {
 
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
+const buildMusicSliderStyle = (value: number, max: number) => {
+  const safeMax = Number.isFinite(max) && max > 0 ? max : 1;
+  const safeValue = Number.isFinite(value) ? Math.min(Math.max(value, 0), safeMax) : 0;
+  const ratio = Math.min(100, Math.max(0, (safeValue / safeMax) * 100));
+
+  return {
+    background: `linear-gradient(90deg, rgba(255,183,197,0.98) 0%, rgba(255,183,197,0.98) ${ratio}%, rgba(42,23,28,0.95) ${ratio}%, rgba(42,23,28,0.95) 100%)`,
+  } satisfies CSSProperties;
+};
+const musicSliderClassName =
+  "h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#2a171c] " +
+  "[&::-webkit-slider-runnable-track]:h-1.5 [&::-webkit-slider-runnable-track]:rounded-full " +
+  "[&::-webkit-slider-thumb]:mt-[-5px] [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border [&::-webkit-slider-thumb]:border-[#ffd6df] [&::-webkit-slider-thumb]:bg-[#fff1f5] [&::-webkit-slider-thumb]:shadow-[0_0_16px_rgba(255,183,197,0.35)] " +
+  "[&::-moz-range-track]:h-1.5 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-transparent [&::-moz-range-track]:border-0 " +
+  "[&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border [&::-moz-range-thumb]:border-[#ffd6df] [&::-moz-range-thumb]:bg-[#fff1f5] [&::-moz-range-thumb]:shadow-[0_0_16px_rgba(255,183,197,0.35)] " +
+  "disabled:cursor-not-allowed disabled:opacity-40";
+
+function MusicGlyph({ playing }: { playing: boolean }) {
+  if (playing) {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-current">
+        <rect x="3" y="2.5" width="3.2" height="11" rx="1.1" />
+        <rect x="9.8" y="2.5" width="3.2" height="11" rx="1.1" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="ml-0.5 h-3.5 w-3.5 fill-current">
+      <path d="M4 2.6c0-.55.6-.89 1.07-.61l8.03 4.84c.45.27.45.95 0 1.22L5.07 12.9A.71.71 0 0 1 4 12.3V2.6Z" />
+    </svg>
+  );
+}
 
 function CommentMediaFrame({
   src,
@@ -3949,13 +3983,14 @@ export default function ProfilePage() {
                         onClick={() => {
                           void handleProfileThemeToggle();
                         }}
-                        className={`inline-flex h-11 min-w-11 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold uppercase tracking-[0.14em] transition ${
+                        aria-label={profileThemeIsPlaying ? "Pause music" : "Play music"}
+                        className={`inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full border transition ${
                           profileThemeIsPlaying
                             ? "border-[#ffb7c5]/45 bg-[#ffb7c5] text-black shadow-[0_0_22px_rgba(255,183,197,0.22)] hover:bg-[#ffc8d3]"
                             : "border-[#ffb7c5]/35 bg-[linear-gradient(180deg,#241118_0%,#140d11_100%)] text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.16)] hover:border-[#ffb7c5]/60 hover:text-white"
                         }`}
                       >
-                        {profileThemeIsPlaying ? "Pause" : "Play"}
+                        <MusicGlyph playing={profileThemeIsPlaying} />
                       </button>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3 text-[10px] font-medium text-gray-400">
@@ -3970,13 +4005,17 @@ export default function ProfilePage() {
                           value={Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime)}
                           onChange={handleProfileThemeSeek}
                           disabled={profileThemeDuration <= 0}
-                          className="mt-2 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-[#2a171c] accent-[#ffb7c5] disabled:cursor-not-allowed disabled:opacity-40"
+                          style={buildMusicSliderStyle(
+                            Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime),
+                            profileThemeDuration > 0 ? profileThemeDuration : 1
+                          )}
+                          className={`mt-2 ${musicSliderClassName}`}
                         />
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 rounded-[18px] border border-[#26151a] bg-[linear-gradient(180deg,rgba(16,10,13,0.94)_0%,rgba(10,10,11,0.94)_100%)] px-3 py-2.5">
-                    <div className="flex items-center gap-3">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
                       <span className="font-mono text-[10px] uppercase tracking-[0.26em] text-[#ffb7c5]">
                         Volume
                       </span>
@@ -3987,9 +4026,10 @@ export default function ProfilePage() {
                         step={0.01}
                         value={profileThemeVolume}
                         onChange={handleProfileThemeVolumeChange}
-                        className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-[#2a171c] accent-[#ffb7c5]"
+                        style={buildMusicSliderStyle(profileThemeVolume, 1)}
+                        className={musicSliderClassName}
                       />
-                      <span className="w-9 text-right text-[10px] font-medium text-gray-400">
+                      <span className="w-10 shrink-0 text-right text-[10px] font-medium text-gray-400">
                         {Math.round(profileThemeVolume * 100)}%
                       </span>
                     </div>

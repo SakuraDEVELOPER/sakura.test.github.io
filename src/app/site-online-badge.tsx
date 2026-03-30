@@ -9,6 +9,7 @@ type SiteOnlineUser = {
   displayName: string | null;
   login: string | null;
   photoURL: string | null;
+  accentRole?: string | null;
   presence?: {
     lastSeenAt: string | null;
   } | null;
@@ -45,11 +46,88 @@ function buildSecondaryLabel(user: SiteOnlineUser) {
     return `@${user.login}`;
   }
 
-  if (user.profileId) {
-    return `Profile #${user.profileId}`;
+  return null;
+}
+
+function normalizeRoleName(role: string | null | undefined) {
+  return typeof role === "string" ? role.trim().toLowerCase() : "";
+}
+
+function formatRole(role: string | null | undefined) {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (!normalizedRole) {
+    return "User";
   }
 
-  return null;
+  return normalizedRole
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function roleTextColor(role: string | null | undefined) {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (normalizedRole === "root") return "#ff6b57";
+  if (normalizedRole === "co-owner") return "#ff8f7a";
+  if (normalizedRole === "super administrator") return "#ffb36b";
+  if (normalizedRole === "administrator") return "#ffd36b";
+  if (normalizedRole === "moderator") return "#7dd3fc";
+  if (normalizedRole === "support") return "#67e8f9";
+  if (normalizedRole === "sponsor") return "#a78bfa";
+  if (normalizedRole === "tester") return "#f3f4f6";
+  if (normalizedRole === "banned") return "#ff6b6b";
+
+  return "#ffffff";
+}
+
+function roleBadgeStyle(role: string | null | undefined) {
+  const normalizedRole = normalizeRoleName(role);
+
+  if (normalizedRole === "root") {
+    return {
+      borderColor: "rgba(255,107,87,0.75)",
+      backgroundColor: "rgba(42,11,12,0.92)",
+      color: "#ffe1dc",
+      boxShadow: "0 0 18px rgba(255,107,87,0.22)",
+    };
+  }
+
+  if (normalizedRole === "co-owner") {
+    return {
+      borderColor: "rgba(255,143,122,0.58)",
+      backgroundColor: "rgba(42,16,13,0.92)",
+      color: "#ffd9cf",
+      boxShadow: "0 0 16px rgba(255,143,122,0.16)",
+    };
+  }
+
+  if (normalizedRole === "sponsor") {
+    return {
+      borderColor: "rgba(167,139,250,0.52)",
+      backgroundColor: "rgba(20,14,34,0.92)",
+      color: "#efe7ff",
+      boxShadow: "0 0 16px rgba(167,139,250,0.18)",
+    };
+  }
+
+  if (normalizedRole === "tester") {
+    return {
+      borderColor: "rgba(255,255,255,0.18)",
+      backgroundColor: "rgba(22,22,24,0.92)",
+      color: "#f4f4f5",
+      boxShadow: "0 0 16px rgba(255,255,255,0.08)",
+    };
+  }
+
+  return {
+    borderColor: "rgba(58,42,49,0.88)",
+    backgroundColor: "rgba(20,13,17,0.92)",
+    color: "#ffb7c5",
+    boxShadow: "0 0 14px rgba(255,183,197,0.08)",
+  };
 }
 
 export function SiteOnlineBadge({
@@ -192,6 +270,7 @@ export function SiteOnlineBadge({
                 {users.map((user) => {
                   const primaryLabel = buildPrimaryLabel(user);
                   const secondaryLabel = buildSecondaryLabel(user);
+                  const accentRole = normalizeRoleName(user.accentRole);
                   const content = (
                     <div className="flex items-center gap-3 rounded-[20px] border border-[#1c1c1c] bg-[#0d0d0d] px-3 py-3 transition hover:border-[#ffb7c5]/35 hover:bg-[#140d11]">
                       {user.photoURL ? (
@@ -208,10 +287,30 @@ export function SiteOnlineBadge({
                         </div>
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-white">{primaryLabel}</p>
+                        <p
+                          className="truncate text-sm font-semibold"
+                          style={{ color: roleTextColor(accentRole) }}
+                        >
+                          {primaryLabel}
+                        </p>
                         {secondaryLabel ? (
                           <p className="mt-1 truncate text-xs text-gray-500">{secondaryLabel}</p>
                         ) : null}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {accentRole ? (
+                            <span
+                              className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+                              style={roleBadgeStyle(accentRole)}
+                            >
+                              {formatRole(accentRole)}
+                            </span>
+                          ) : null}
+                          {typeof user.profileId === "number" ? (
+                            <span className="inline-flex items-center rounded-full border border-[#3a2a31] bg-[#140d11] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5]">
+                              ID: {user.profileId}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <span className="shrink-0 text-[10px] font-mono uppercase tracking-[0.18em] text-[#ffb7c5]">
                         Online
