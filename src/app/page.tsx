@@ -176,7 +176,8 @@ const ROLE_CHIP_ORDER = new Map([
   ["moderator", 4],
   ["support", 5],
   ["sponsor", 6],
-  ["user", 7],
+  ["tester", 7],
+  ["user", 8],
 ]);
 const REMOVED_ROLE_NAMES = new Set([
   "subscriber",
@@ -320,6 +321,15 @@ function roleChipStyle(role: string | null | undefined): CSSProperties {
       backgroundColor: "#161022",
       color: "#e3d8ff",
       boxShadow: "0 0 18px rgba(139,92,246,0.22)",
+    };
+  }
+
+  if (normalizedRole === "tester") {
+    return {
+      borderColor: "#ffffff",
+      backgroundColor: "#151515",
+      color: "#ffffff",
+      boxShadow: "0 0 18px rgba(255,255,255,0.2)",
     };
   }
 
