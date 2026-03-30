@@ -2359,6 +2359,21 @@
       }
     };
 
+    const isCommentMediaPathReferenced = async (mediaPath) => {
+      const normalizedMediaPath =
+        typeof mediaPath === "string" ? mediaPath.trim() : "";
+
+      if (!normalizedMediaPath) {
+        return false;
+      }
+
+      const snapshot = await getDocs(
+        query(profileCommentsCollection, where("mediaPath", "==", normalizedMediaPath), limit(1))
+      );
+
+      return !snapshot.empty;
+    };
+
     const addProfileComment = async (profileId, message, mediaFile = null) => {
       if (!Number.isInteger(profileId) || profileId <= 0) {
         throw createFirebaseError("profile/invalid-id", "Profile id must be a positive number.");
@@ -3623,6 +3638,7 @@
       getProfileById,
       getProfileByAuthorName,
       getProfileComments,
+      isCommentMediaPathReferenced,
       addProfileComment,
       updateProfileComment,
       deleteProfileComment,

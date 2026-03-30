@@ -25,6 +25,7 @@ export type SupabaseCommentMediaUploadResult = {
   publicUrl: string;
   contentType: string;
   size: number;
+  reused: boolean;
 };
 
 function sanitizeFileName(fileName: string) {
@@ -34,14 +35,43 @@ function sanitizeFileName(fileName: string) {
   return cleaned || "upload";
 }
 
-function buildObjectPath(file: File, folder: string, userId = "guest") {
-  const date = new Date();
-  const year = String(date.getUTCFullYear());
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const objectId = crypto.randomUUID();
-  const safeUserId = sanitizeFileName(userId);
+function inferFileExtension(file: File) {
+  switch (file.type) {
+    case "image/jpeg":
+      return "jpg";
+    case "image/png":
+      return "png";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
+    case "video/mp4":
+      return "mp4";
+    case "video/webm":
+      return "webm";
+    default: {
+      const nameParts = file.name.split(".");
+      return nameParts.length > 1 ? sanitizeFileName(nameParts.pop() ?? "") || "bin" : "bin";
+    }
+  }
+}
 
-  return `${folder}/${safeUserId}/${year}/${month}/${objectId}-${sanitizeFileName(file.name)}`;
+function toHex(buffer: ArrayBuffer) {
+  return Array.from(new Uint8Array(buffer), (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+async function createFileContentHash(file: File) {
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return toHex(digest);
+}
+
+async function buildObjectPath(file: File, folder: string, userId = "guest") {
+  const safeUserId = sanitizeFileName(userId);
+  const hash = await createFileContentHash(file);
+  const extension = inferFileExtension(file);
+
+  return `${folder}/${safeUserId}/${hash}.${extension}`;
 }
 
 export function validateSupabaseCommentMediaFile(file: File) {
@@ -76,7 +106,13 @@ async function uploadStorageObject(file: File, objectPath: string): Promise<Supa
       upsert: false,
     });
 
-  if (error) {
+  const alreadyExists = Boolean(
+    error &&
+      (String((error as { statusCode?: string | number } | null)?.statusCode ?? "") === "409" ||
+        /already exists/i.test(error.message))
+  );
+
+  if (error && !alreadyExists) {
     throw error;
   }
 
@@ -90,6 +126,7 @@ async function uploadStorageObject(file: File, objectPath: string): Promise<Supa
     publicUrl,
     contentType: file.type,
     size: file.size,
+    reused: alreadyExists,
   };
 }
 
@@ -98,7 +135,7 @@ export async function uploadSupabaseCommentMedia(
   userId: string
 ): Promise<SupabaseCommentMediaUploadResult> {
   validateSupabaseCommentMediaFile(file);
-  return uploadStorageObject(file, buildObjectPath(file, "comments", userId));
+  return uploadStorageObject(file, await buildObjectPath(file, "comments", userId));
 }
 
 export async function uploadSupabaseAvatarMedia(
@@ -106,12 +143,12 @@ export async function uploadSupabaseAvatarMedia(
   userId: string
 ): Promise<SupabaseCommentMediaUploadResult> {
   validateSupabaseAvatarFile(file);
-  return uploadStorageObject(file, buildObjectPath(file, "avatars", userId));
+  return uploadStorageObject(file, await buildObjectPath(file, "avatars", userId));
 }
 
 export async function uploadSupabaseCommentMediaTest(file: File) {
   validateSupabaseCommentMediaFile(file);
-  return uploadStorageObject(file, buildObjectPath(file, "tests"));
+  return uploadStorageObject(file, await buildObjectPath(file, "tests"));
 }
 
 export async function deleteSupabaseStorageObject(objectPath: string) {

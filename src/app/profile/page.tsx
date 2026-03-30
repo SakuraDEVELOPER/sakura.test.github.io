@@ -74,6 +74,7 @@ type Bridge = {
   getProfileById: (profileId: number) => Promise<UserProfile | null>;
   getProfileByAuthorName: (authorName: string) => Promise<UserProfile | null>;
   getProfileComments: (profileId: number) => Promise<ProfileComment[]>;
+  isCommentMediaPathReferenced: (mediaPath: string) => Promise<boolean>;
   addProfileComment: (
     profileId: number,
     message: string,
@@ -264,6 +265,8 @@ const toAvatarUploadPayload = (
   avatarPath: uploadResult.path,
   avatarSize: uploadResult.size,
 });
+const shouldCleanupUploadedMedia = (uploadResult: SupabaseCommentMediaUploadResult | null) =>
+  uploadResult ? Boolean(uploadResult.path) && !uploadResult.reused : false;
 const isCommentVideoMediaType = (value: string | null | undefined) =>
   value === "video/mp4" || value === "video/webm";
 
@@ -1785,7 +1788,7 @@ export default function ProfilePage() {
       applyUpdatedProfileSnapshot(snapshot);
       setAvatarSuccess(isOwner ? "Avatar saved." : "Avatar updated.");
     } catch (error) {
-      if (uploadedAvatar?.path) {
+      if (uploadedAvatar && shouldCleanupUploadedMedia(uploadedAvatar)) {
         void deleteSupabaseStorageObject(uploadedAvatar.path).catch((cleanupError) => {
           console.error("Failed to cleanup uploaded avatar media:", cleanupError);
         });
@@ -2112,7 +2115,7 @@ export default function ProfilePage() {
       }
       setCommentSuccess("Comment posted.");
     } catch (error) {
-      if (uploadedMedia?.path) {
+      if (uploadedMedia && shouldCleanupUploadedMedia(uploadedMedia)) {
         void deleteSupabaseCommentMedia(uploadedMedia.path).catch((cleanupError) => {
           console.error("Failed to cleanup uploaded comment media:", cleanupError);
         });
@@ -2139,6 +2142,23 @@ export default function ProfilePage() {
     setCommentMediaFile(null);
     if (commentMediaInputRef.current) {
       commentMediaInputRef.current.value = "";
+    }
+  };
+
+  const deleteCommentMediaIfUnused = async (
+    bridge: Bridge,
+    mediaPath: string | null | undefined
+  ) => {
+    const normalizedMediaPath = typeof mediaPath === "string" ? mediaPath.trim() : "";
+
+    if (!normalizedMediaPath) {
+      return;
+    }
+
+    const isStillReferenced = await bridge.isCommentMediaPathReferenced(normalizedMediaPath);
+
+    if (!isStillReferenced) {
+      await deleteSupabaseCommentMedia(normalizedMediaPath);
     }
   };
 
@@ -2172,7 +2192,7 @@ export default function ProfilePage() {
       setCommentSuccess("Comment deleted.");
 
       if (currentComment?.mediaPath) {
-        void deleteSupabaseCommentMedia(currentComment.mediaPath).catch((cleanupError) => {
+        void deleteCommentMediaIfUnused(bridge, currentComment.mediaPath).catch((cleanupError) => {
           console.error("Failed to remove deleted comment media:", cleanupError);
         });
       }
@@ -2282,7 +2302,7 @@ export default function ProfilePage() {
       );
 
       if (!updatedComment) {
-        if (uploadedMedia?.path) {
+        if (uploadedMedia && shouldCleanupUploadedMedia(uploadedMedia)) {
           void deleteSupabaseCommentMedia(uploadedMedia.path).catch((cleanupError) => {
             console.error("Failed to cleanup uploaded comment media:", cleanupError);
           });
@@ -2309,12 +2329,12 @@ export default function ProfilePage() {
       setCommentSuccess("Comment updated.");
 
       if (currentComment?.mediaPath && (Boolean(uploadedMedia?.path) || isEditingCommentMediaRemoved)) {
-        void deleteSupabaseCommentMedia(currentComment.mediaPath).catch((cleanupError) => {
+        void deleteCommentMediaIfUnused(bridge, currentComment.mediaPath).catch((cleanupError) => {
           console.error("Failed to remove replaced comment media:", cleanupError);
         });
       }
     } catch (error) {
-      if (uploadedMedia?.path) {
+      if (uploadedMedia && shouldCleanupUploadedMedia(uploadedMedia)) {
         void deleteSupabaseCommentMedia(uploadedMedia.path).catch((cleanupError) => {
           console.error("Failed to cleanup uploaded comment media:", cleanupError);
         });
