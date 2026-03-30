@@ -1,0 +1,155 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function nonAnonymous() {
+      return signedIn()
+        && request.auth.token.firebase.sign_in_provider != "anonymous";
+    }
+
+    function currentUserPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasCurrentUserDoc() {
+      return signedIn() && exists(currentUserPath());
+    }
+
+    function currentUserDoc() {
+      return get(currentUserPath()).data;
+    }
+
+    function currentUserIsActive() {
+      return nonAnonymous()
+        && (
+          !hasCurrentUserDoc()
+          || currentUserDoc().isBanned != true
+        );
+    }
+
+    function isSelf(userId) {
+      return nonAnonymous() && request.auth.uid == userId;
+    }
+
+    function hasAnyRole(roleNames) {
+      return hasCurrentUserDoc()
+        && currentUserDoc().roles is list
+        && currentUserDoc().roles.hasAny(roleNames);
+    }
+
+    function isRoot() {
+      return currentUserIsActive() && hasAnyRole(["root"]);
+    }
+
+    function canModerateComments() {
+      return currentUserIsActive()
+        && hasAnyRole([
+          "root",
+          "co-owner",
+          "super administrator",
+          "administrator",
+          "support",
+          "moderator"
+        ]);
+    }
+
+    function isOwnProfile(profileId) {
+      return hasCurrentUserDoc()
+        && currentUserDoc().profileId is int
+        && currentUserDoc().profileId == profileId;
+    }
+
+    function canUserSelfUpdateProfileFields(userId) {
+      return isSelf(userId)
+        && currentUserIsActive()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.profileId == resource.data.profileId
+        && request.resource.data.roles == resource.data.roles
+        && request.resource.data.isBanned == resource.data.isBanned
+        && request.resource.data.bannedAt == resource.data.bannedAt;
+    }
+
+    function canRootUpdateAnyProfileFields(userId) {
+      return isRoot()
+        && currentUserIsActive()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.profileId == resource.data.profileId;
+    }
+
+    function canDeleteComment() {
+      return currentUserIsActive()
+        && (
+          resource.data.authorUid == request.auth.uid
+          || canModerateComments()
+          || (
+            resource.data.profileId is int
+            && isOwnProfile(resource.data.profileId)
+          )
+        );
+    }
+
+    function canUpdateComment() {
+      return currentUserIsActive()
+        && (
+          isSelf(resource.data.authorUid)
+          || isRoot()
+        )
+        && request.resource.data.authorUid == resource.data.authorUid
+        && request.resource.data.profileId == resource.data.profileId
+        && request.resource.data.authorProfileId == resource.data.authorProfileId
+        && request.resource.data.authorName == resource.data.authorName
+        && request.resource.data.authorPhotoURL == resource.data.authorPhotoURL
+        && request.resource.data.authorAccentRole == resource.data.authorAccentRole
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+
+      allow create: if isSelf(userId)
+        && currentUserIsActive()
+        && request.resource.data.uid == userId
+        && request.resource.data.profileId is int
+        && request.resource.data.profileId > 0
+        && request.resource.data.roles is list
+        && request.resource.data.roles.size() > 0;
+
+      allow update: if canUserSelfUpdateProfileFields(userId)
+        || canRootUpdateAnyProfileFields(userId);
+
+      allow delete: if currentUserIsActive()
+        && (isSelf(userId) || isRoot());
+    }
+
+    match /meta/counters {
+      allow read: if true;
+
+      allow create: if currentUserIsActive()
+        && request.resource.data.profileCount is int
+        && request.resource.data.profileCount == 1;
+
+      allow update: if currentUserIsActive()
+        && request.resource.data.profileCount is int
+        && resource.data.profileCount is int
+        && request.resource.data.profileCount == resource.data.profileCount + 1;
+
+      allow delete: if false;
+    }
+
+    match /profileComments/{commentId} {
+      allow read: if true;
+
+      // Keep comment writes soft so plain text, text+media, and media-only comments
+      // don't break every time the client payload evolves.
+      allow create: if currentUserIsActive();
+
+      allow delete: if canDeleteComment();
+
+      allow update: if canUpdateComment();
+    }
+  }
+}

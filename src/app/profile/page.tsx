@@ -1794,10 +1794,17 @@ export default function ProfilePage() {
       }
 
       applyUpdatedProfileSnapshot(snapshot);
+      if (snapshot?.login) {
+        setUsernameInput(snapshot.login);
+      }
       if (isOwner) {
         setUsernamePasswordInput("");
       }
-      setUsernameSuccess(isOwner ? "Login saved." : "Login updated.");
+      setUsernameSuccess(
+        snapshot?.login
+          ? (isOwner ? `Login saved: @${snapshot.login}` : `Login updated: @${snapshot.login}`)
+          : (isOwner ? "Login saved." : "Login updated.")
+      );
     } catch (error) {
       setUsernameError(error instanceof Error ? error.message : "Could not save login.");
     } finally {
