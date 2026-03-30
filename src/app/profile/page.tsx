@@ -3421,7 +3421,7 @@ export default function ProfilePage() {
                   <div
                     key={label}
                     style={metaCardStyle}
-                    className="inline-block max-w-full rounded-[26px] border p-4 backdrop-blur-sm"
+                    className="inline-block max-w-full rounded-[26px] border p-4 text-center backdrop-blur-sm"
                   >
                     <p
                       style={metaLabelStyle}
@@ -3429,7 +3429,7 @@ export default function ProfilePage() {
                     >
                       {label}
                     </p>
-                    <div className="mt-3">
+                    <div className="mt-3 flex justify-center">
                       <span
                         style={metaValueStyle}
                         className="inline-flex max-w-full items-center text-[12px] leading-none sm:text-[13px]"
