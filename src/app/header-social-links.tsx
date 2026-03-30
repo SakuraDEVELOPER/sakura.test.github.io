@@ -74,6 +74,7 @@ const SOCIAL_LINKS: SocialLinkDefinition[] = [
   {
     id: "vk",
     label: "VK",
+    href: "https://vk.com/sakura_cheat",
     icon: <VkIcon />,
   },
   {
