@@ -1633,6 +1633,7 @@ export default function ProfilePage() {
             const profilePreviewName = profileNameOf(profile);
             const profilePreviewInitials = initialsOf(profile);
             const profileMentionLogin = profile.login ? `@${profile.login}` : profilePreviewName;
+            const showProfileBadge = mode !== "edit";
             const profileSecondaryName =
               profilePreviewName && profilePreviewName !== profile.login
                 ? profilePreviewName
@@ -1674,14 +1675,16 @@ export default function ProfilePage() {
                         </span>
                       ) : null}
                     </span>
-                    <span
-                      style={{ ...roleBadgeStyle(profileBadgeRole), ...roleBadgeTextStyle }}
-                      className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1 text-[10px] font-bold"
-                    >
-                      <span aria-hidden="true" className="inline-flex items-center">
-                        {renderRoleBadgeText(profileBadgeRole)}
+                    {showProfileBadge ? (
+                      <span
+                        style={{ ...roleBadgeStyle(profileBadgeRole), ...roleBadgeTextStyle }}
+                        className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-3 py-1 text-[10px] font-bold"
+                      >
+                        <span aria-hidden="true" className="inline-flex items-center">
+                          {renderRoleBadgeText(profileBadgeRole)}
+                        </span>
                       </span>
-                    </span>
+                    ) : null}
                   </a>
                   <button
                     type="button"
