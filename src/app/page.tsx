@@ -1573,7 +1573,7 @@ export default function Home() {
           </div>
         </nav>
 
-        <section className="flex flex-col items-center justify-center px-4 pt-32 pb-20">
+        <section className="flex flex-col items-center justify-center px-4 pt-32 pb-12">
           <m.h1
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -1583,20 +1583,6 @@ export default function Home() {
             Feel The <br /> <span className="italic text-gray-500">Sakura Power</span>
           </m.h1>
 
-          <div className="mb-10 flex max-w-xl flex-col items-center gap-5 text-center">
-            <p className="text-lg leading-relaxed text-gray-400">
-              Приватный чит для Dota 2.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                void handleHeroTrialClick();
-              }}
-              className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/60 bg-[#140f12] px-8 py-3 text-sm font-semibold text-[#ffd8e1] shadow-[0_0_24px_rgba(255,183,197,0.16)] transition-all hover:border-[#ffd1db] hover:bg-[#1c1217] hover:text-white active:scale-95"
-            >
-              Тестовый период на 7 дней
-            </button>
-          </div>
         </section>
 
         <section id="features" className="grid grid-cols-1 gap-1 px-10 pt-20 pb-1 md:grid-cols-2">
@@ -1612,7 +1598,9 @@ export default function Home() {
           />
         </section>
 
-        <FeatureShowcase />
+        <FeatureShowcase onTrialClick={() => {
+          void handleHeroTrialClick();
+        }} />
         <SetupSteps />
         <DownloadSection />
       </div>
@@ -2128,7 +2116,7 @@ function LegacyFeatureShowcase() {
   );
 }
 
-function FeatureShowcase() {
+function FeatureShowcase({ onTrialClick }: { onTrialClick: () => void }) {
   const [activeSlide, setActiveSlide] = useState(0);
   const slide = showcaseSlides[activeSlide];
 
@@ -2150,6 +2138,19 @@ function FeatureShowcase() {
           <h2 className="max-w-2xl text-4xl font-black uppercase tracking-tighter text-white">
             Листай карточки
           </h2>
+        </div>
+
+        <div className="mb-12 flex flex-col items-center gap-5 text-center">
+          <p className="text-lg leading-relaxed text-gray-300">
+            Приватный чит для Dota 2.
+          </p>
+          <button
+            type="button"
+            onClick={onTrialClick}
+            className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/60 bg-[#140f12] px-8 py-3 text-sm font-semibold text-[#ffd8e1] shadow-[0_0_24px_rgba(255,183,197,0.16)] transition-all hover:border-[#ffd1db] hover:bg-[#1c1217] hover:text-white active:scale-95"
+          >
+            Тестовый период на 7 дней
+          </button>
         </div>
 
         <div className="grid items-stretch gap-8 lg:grid-cols-[0.85fr_1.15fr]">
