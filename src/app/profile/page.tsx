@@ -3408,22 +3408,20 @@ export default function ProfilePage() {
                     {typeof activeProfile.profileId === "number" ? <div className="mt-3">
                       <span style={roleBadgeTextStyle} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-[#3a2a31] bg-[#140d11] px-3 py-1 text-[10px] font-bold text-[#ffb7c5]">ID: {activeProfile.profileId}</span>
                     </div> : null}
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
                       {profileRoles.map((role) => <span key={role} title={roleBadgeLabel(role)} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex min-h-[26px] shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 py-1 text-[10px] font-bold"><span aria-hidden="true" className="inline-flex items-center">{renderRoleBadgeText(role)}</span></span>)}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="grid gap-3 px-8 py-6 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-3 px-8 py-6">
                 {[
-                  ["Profile Name", primaryName],
-                  ...(hasUsername || isOwner ? [["Login", hasUsername ? `@${activeProfile.login}` : "Not set yet"]] : []),
                   ["Account Created", formatTime(activeProfile.creationTime)],
                 ].map(([label, value]) => (
                   <div
                     key={label}
                     style={metaCardStyle}
-                    className="min-w-0 rounded-[26px] border p-4 backdrop-blur-sm"
+                    className="min-w-0 rounded-[26px] border p-4 backdrop-blur-sm md:max-w-[340px]"
                   >
                     <p
                       style={metaLabelStyle}
