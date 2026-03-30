@@ -1389,12 +1389,17 @@ export default function ProfilePage() {
   const renderMentionProfilePreview = (mentionProfile: UserProfile, mentionText: string) => {
     const mentionProfileRole = resolveMentionProfileRole(mentionProfile);
     const mentionPreviewName = profileNameOf(mentionProfile);
-    const mentionPreviewLogin = mentionProfile.login ? `@${mentionProfile.login}` : mentionText;
+    const mentionPreviewNickname = mentionProfile.login ? `@${mentionProfile.login}` : mentionText;
     const mentionPreviewInitials = initialsOf(mentionProfile);
     const mentionPreviewBadgeRole = deriveVisibleProfileRoles(mentionProfile)[0] ?? "user";
+    const mentionPreviewDisplayName = mentionProfile.displayName?.trim() ?? "";
+    const showMentionPreviewDisplayName =
+      Boolean(mentionPreviewDisplayName) &&
+      normalizeCommentAuthorKey(mentionPreviewDisplayName) !==
+        normalizeCommentAuthorKey(mentionProfile.login ?? "");
 
     return (
-      <span className="pointer-events-none absolute left-1/2 top-full z-30 mt-3 w-[260px] -translate-x-1/2 translate-y-2 rounded-[22px] border border-[#2a2023] bg-[#0c0b0d] px-4 py-4 opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.46),0_0_35px_rgba(255,183,197,0.08)] transition duration-150 ease-out invisible group-hover/mention:visible group-hover/mention:translate-y-0 group-hover/mention:opacity-100 group-focus-within/mention:visible group-focus-within/mention:translate-y-0 group-focus-within/mention:opacity-100">
+      <span className="absolute left-1/2 top-full z-30 mt-3 w-[260px] -translate-x-1/2 translate-y-2 rounded-[22px] border border-[#2a2023] bg-[#0c0b0d] px-4 py-4 opacity-0 shadow-[0_18px_50px_rgba(0,0,0,0.46),0_0_35px_rgba(255,183,197,0.08)] transition duration-150 ease-out invisible group-hover/mention:visible group-hover/mention:translate-y-0 group-hover/mention:opacity-100 group-focus-within/mention:visible group-focus-within/mention:translate-y-0 group-focus-within/mention:opacity-100">
         <span className="absolute left-1/2 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-l border-t border-[#2a2023] bg-[#0c0b0d]" />
         <span className="flex items-start gap-3">
           {mentionProfile.photoURL ? (
@@ -1411,18 +1416,25 @@ export default function ProfilePage() {
             </span>
           )}
           <span className="min-w-0 flex-1">
-            <span
-              style={roleHeadlineStyle(mentionProfileRole)}
-              className="block truncate text-sm font-black uppercase tracking-[0.03em]"
-            >
-              {mentionPreviewName}
-            </span>
-            <span
+            <a
+              href={typeof mentionProfile.profileId === "number" ? profilePath(mentionProfile.profileId) : "#"}
               style={roleCommentAuthorStyle(mentionProfileRole)}
-              className="mt-1 block truncate text-xs font-semibold"
+              className="block truncate text-sm font-black transition hover:brightness-125 hover:text-white"
             >
-              {mentionPreviewLogin}
-            </span>
+              {mentionPreviewNickname}
+            </a>
+            {showMentionPreviewDisplayName ? (
+              <span className="mt-1 block truncate text-xs text-gray-400">
+                {mentionPreviewDisplayName}
+              </span>
+            ) : (
+              <span
+                style={roleHeadlineStyle(mentionProfileRole)}
+                className="mt-1 block truncate text-xs font-semibold"
+              >
+                {mentionPreviewName}
+              </span>
+            )}
             <span className="mt-3 flex items-center gap-2">
               <span
                 style={{ ...roleBadgeStyle(mentionPreviewBadgeRole), ...roleBadgeTextStyle }}
