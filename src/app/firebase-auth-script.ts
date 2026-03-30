@@ -3118,12 +3118,33 @@
         verificationEmailSent: false,
       };
     };
-    const getSiteOnlineCount = async () => {
+    const compareOnlineUsers = (left, right) => {
+      const leftSeenAt =
+        left?.presence?.lastSeenAt ? Date.parse(left.presence.lastSeenAt) : Number.NaN;
+      const rightSeenAt =
+        right?.presence?.lastSeenAt ? Date.parse(right.presence.lastSeenAt) : Number.NaN;
+
+      if (Number.isFinite(leftSeenAt) && Number.isFinite(rightSeenAt) && leftSeenAt !== rightSeenAt) {
+        return rightSeenAt - leftSeenAt;
+      }
+
+      const leftLabel =
+        (typeof left?.displayName === "string" && left.displayName.trim()) ||
+        (typeof left?.login === "string" && left.login.trim()) ||
+        "";
+      const rightLabel =
+        (typeof right?.displayName === "string" && right.displayName.trim()) ||
+        (typeof right?.login === "string" && right.login.trim()) ||
+        "";
+
+      return leftLabel.localeCompare(rightLabel);
+    };
+    const getFreshOnlineUsers = async () => {
       try {
         const usersSnapshot = await getDocs(
           query(collection(db, "users"), where("presence.status", "==", "online"))
         );
-        let count = 0;
+        const onlineUsers = [];
         const countedUserIds = new Set();
 
         usersSnapshot.forEach((userDoc) => {
@@ -3135,7 +3156,7 @@
 
           if (isPresenceFreshOnline(details?.presence)) {
             countedUserIds.add(userDoc.id);
-            count += 1;
+            onlineUsers.push(toStoredUserSnapshot(userDoc.id, details));
           }
         });
 
@@ -3158,10 +3179,46 @@
           currentSnapshot?.isBanned !== true &&
           !countedUserIds.has(localCurrentUid)
         ) {
-          count += 1;
+          onlineUsers.push({
+            uid: currentSnapshot?.uid ?? localCurrentUid,
+            isAnonymous: false,
+            email: currentSnapshot?.email ?? null,
+            emailVerified: currentSnapshot?.emailVerified ?? null,
+            login: currentSnapshot?.login ?? null,
+            displayName:
+              typeof currentSnapshot?.displayName === "string"
+                ? currentSnapshot.displayName
+                : typeof currentSnapshot?.login === "string"
+                  ? currentSnapshot.login
+                  : null,
+            profileId:
+              typeof currentSnapshot?.profileId === "number"
+                ? currentSnapshot.profileId
+                : null,
+            photoURL: currentSnapshot?.photoURL ?? null,
+            roles: Array.isArray(currentSnapshot?.roles) ? currentSnapshot.roles : [],
+            isBanned: currentSnapshot?.isBanned === true,
+            bannedAt: currentSnapshot?.bannedAt ?? null,
+            verificationRequired: currentSnapshot?.verificationRequired ?? false,
+            providerIds: Array.isArray(currentSnapshot?.providerIds)
+              ? currentSnapshot.providerIds
+              : [],
+            creationTime: currentSnapshot?.creationTime ?? null,
+            lastSignInTime: currentSnapshot?.lastSignInTime ?? null,
+            loginHistory: Array.isArray(currentSnapshot?.loginHistory)
+              ? currentSnapshot.loginHistory
+              : [],
+            visitHistory: Array.isArray(currentSnapshot?.visitHistory)
+              ? currentSnapshot.visitHistory
+              : [],
+            presence: normalizePresence(
+              currentSnapshot?.presence,
+              window.location.pathname
+            ),
+          });
         }
 
-        return count;
+        return onlineUsers.sort(compareOnlineUsers);
       } catch (error) {
         if (!isPermissionDeniedError(error)) {
           throw error;
@@ -3172,6 +3229,30 @@
           "Online presence could not be loaded. Check Firestore read rules for users."
         );
       }
+    };
+    const getSiteOnlineCount = async () => {
+      const onlineUsers = await getFreshOnlineUsers();
+      return onlineUsers.length;
+    };
+    const getSiteOnlineUsers = async () => {
+      const onlineUsers = await getFreshOnlineUsers();
+
+      return onlineUsers.map((snapshot) => ({
+        uid: snapshot?.uid ?? null,
+        profileId: typeof snapshot?.profileId === "number" ? snapshot.profileId : null,
+        displayName:
+          typeof snapshot?.displayName === "string" ? snapshot.displayName : null,
+        login: typeof snapshot?.login === "string" ? snapshot.login : null,
+        photoURL: typeof snapshot?.photoURL === "string" ? snapshot.photoURL : null,
+        presence: snapshot?.presence
+          ? {
+              lastSeenAt:
+                typeof snapshot.presence.lastSeenAt === "string"
+                  ? snapshot.presence.lastSeenAt
+                  : null,
+            }
+          : null,
+      }));
     };
 
     window.sakuraFirebaseAuth = {
@@ -3282,6 +3363,7 @@
       resendVerificationEmail,
       refreshVerificationStatus,
       getSiteOnlineCount,
+      getSiteOnlineUsers,
       updateProfileRoles,
       updateAvatar,
       deleteAvatar,

@@ -70,6 +70,16 @@ type Bridge = {
   adminDeleteProfileAvatar: (profileId: number) => Promise<UserProfile | null>;
   syncPresence: (options?: { path?: string; source?: string; forceVisit?: boolean }) => Promise<UserProfile | null>;
   getSiteOnlineCount: () => Promise<number>;
+  getSiteOnlineUsers: () => Promise<
+    {
+      uid: string | null;
+      profileId: number | null;
+      displayName: string | null;
+      login: string | null;
+      photoURL: string | null;
+      presence?: { lastSeenAt: string | null } | null;
+    }[]
+  >;
   logout: () => Promise<void>;
   onAuthStateChanged: (callback: (user: UserProfile | null) => void) => () => void;
 };
@@ -89,7 +99,7 @@ const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
-const PROFILE_BUILD_MARKER = "role-colors-v44";
+const PROFILE_BUILD_MARKER = "role-colors-v45";
 const repoBasePath = "/sakura.github.io";
 const COMMENT_MEDIA_FILE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif";
 const PRESENCE_ACTIVE_WINDOW_MS = 5 * 60 * 1000;
@@ -2148,6 +2158,7 @@ export default function ProfilePage() {
               <Link href="/" className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white">Home</Link>
               {visibleCurrentUser?.profileId && !isOwner ? <a href={profilePath(visibleCurrentUser.profileId)} className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#1a1012] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">My Profile</a> : null}
               {visibleCurrentUser ? <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isLoggingOut ? "Logging out..." : "Logout"}</button> : null}
+              <SiteOnlineBadge count={siteOnlineCount} profileHrefBuilder={profilePath} />
             </div>
           </nav>
         </div>
@@ -2470,12 +2481,6 @@ export default function ProfilePage() {
       </div>
       {activeProfile ? (
         <>
-          <div className="fixed top-6 right-6 z-40">
-            <SiteOnlineBadge
-              count={siteOnlineCount}
-              className="rounded-full border border-[#ffb7c5]/35 bg-[#140d11] px-4 py-2 shadow-[0_0_30px_rgba(255,183,197,0.14)]"
-            />
-          </div>
           <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
             {canOpenAdminPanel ? (
               <button

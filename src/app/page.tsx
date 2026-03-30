@@ -136,6 +136,16 @@ type FirebaseAuthBridge = {
     forceVisit?: boolean;
   }) => Promise<AuthUserSnapshot | null>;
   getSiteOnlineCount: () => Promise<number>;
+  getSiteOnlineUsers: () => Promise<
+    {
+      uid: string | null;
+      profileId: number | null;
+      displayName: string | null;
+      login: string | null;
+      photoURL: string | null;
+      presence?: { lastSeenAt: string | null } | null;
+    }[]
+  >;
   logout: () => Promise<void>;
   onAuthStateChanged: (callback: (user: AuthUserSnapshot | null) => void) => () => void;
 };
@@ -1568,7 +1578,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-wrap items-center justify-start gap-3 text-sm font-medium text-gray-400 md:justify-self-end md:justify-end">
-            <SiteOnlineBadge count={siteOnlineCount} />
+            <SiteOnlineBadge count={siteOnlineCount} profileHrefBuilder={profileHref} />
             <HeaderAuth />
           </div>
         </nav>
@@ -1596,6 +1606,12 @@ export default function Home() {
           </div>
         </section>
 
+        <TrialCta
+          onClick={() => {
+            void handleHeroTrialClick();
+          }}
+        />
+
         <section id="features" className="grid grid-cols-1 gap-1 px-10 pt-20 pb-1 md:grid-cols-2">
           <FeatureBox
             delay={0.1}
@@ -1609,14 +1625,31 @@ export default function Home() {
           />
         </section>
 
-        <FeatureShowcase onTrialClick={() => {
-          void handleHeroTrialClick();
-        }} />
+        <FeatureShowcase />
         <SetupSteps />
         <DownloadSection />
       </div>
       </main>
     </LazyMotion>
+  );
+}
+
+function TrialCta({ onClick }: { onClick: () => void }) {
+  return (
+    <section className="px-10 pb-6">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-5 text-center">
+        <p className="text-lg leading-relaxed text-gray-300">
+          Приватный чит для Dota 2.
+        </p>
+        <button
+          type="button"
+          onClick={onClick}
+          className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/60 bg-[#140f12] px-8 py-3 text-sm font-semibold text-[#ffd8e1] shadow-[0_0_24px_rgba(255,183,197,0.16)] transition-all hover:border-[#ffd1db] hover:bg-[#1c1217] hover:text-white active:scale-95"
+        >
+          Тестовый период на 7 дней
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -2127,7 +2160,7 @@ function LegacyFeatureShowcase() {
   );
 }
 
-function FeatureShowcase({ onTrialClick }: { onTrialClick: () => void }) {
+function FeatureShowcase() {
   const [activeSlide, setActiveSlide] = useState(0);
   const slide = showcaseSlides[activeSlide];
 
@@ -2240,18 +2273,6 @@ function FeatureShowcase({ onTrialClick }: { onTrialClick: () => void }) {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-5 text-center">
-          <p className="text-lg leading-relaxed text-gray-300">
-            Приватный чит для Dota 2.
-          </p>
-          <button
-            type="button"
-            onClick={onTrialClick}
-            className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/60 bg-[#140f12] px-8 py-3 text-sm font-semibold text-[#ffd8e1] shadow-[0_0_24px_rgba(255,183,197,0.16)] transition-all hover:border-[#ffd1db] hover:bg-[#1c1217] hover:text-white active:scale-95"
-          >
-            Тестовый период на 7 дней
-          </button>
-        </div>
       </div>
     </section>
   );
