@@ -2332,67 +2332,130 @@
       })
     );
   };
-  const mapSupabaseRpcProfilePayloadToSnapshot = (payload) => {
+  const getCachedProfileSnapshotById = (profileId) => {
+    const normalizedProfileId = normalizeSupabaseInteger(profileId);
+
+    if (normalizedProfileId === null || normalizedProfileId <= 0) {
+      return null;
+    }
+
+    if (
+      window.sakuraCurrentUserSnapshot &&
+      !window.sakuraCurrentUserSnapshot.isAnonymous &&
+      window.sakuraCurrentUserSnapshot.profileId === normalizedProfileId
+    ) {
+      return window.sakuraCurrentUserSnapshot;
+    }
+
+    const cachedProfile = readRuntimeCacheEntry(
+      profileByIdRuntimeCache,
+      String(normalizedProfileId)
+    );
+
+    return cachedProfile.hit ? cachedProfile.value : null;
+  };
+  const mapSupabaseRpcProfilePayloadToSnapshot = (payload, options = {}) => {
     if (!payload || typeof payload !== "object") {
       return null;
     }
 
+    const fallbackProfileId = normalizeSupabaseInteger(options.profileId);
+    const fallbackSnapshot =
+      fallbackProfileId !== null ? getCachedProfileSnapshotById(fallbackProfileId) : null;
     const uid =
       typeof payload.firebaseUid === "string" && payload.firebaseUid
         ? payload.firebaseUid
         : typeof payload.authUserId === "string" && payload.authUserId
           ? payload.authUserId
+          : typeof fallbackSnapshot?.uid === "string" && fallbackSnapshot.uid
+            ? fallbackSnapshot.uid
           : null;
 
     if (!uid) {
       return null;
     }
 
+    const payloadProfileId = normalizeSupabaseInteger(payload.profileId);
+    const resolvedProfileId =
+      payloadProfileId !== null && payloadProfileId > 0
+        ? payloadProfileId
+        : fallbackProfileId !== null && fallbackProfileId > 0
+          ? fallbackProfileId
+          : typeof fallbackSnapshot?.profileId === "number" && fallbackSnapshot.profileId > 0
+            ? fallbackSnapshot.profileId
+            : null;
+
     return cacheResolvedProfileSnapshot(
       toStoredUserSnapshot(uid, {
         email:
-          typeof payload.email === "string" && payload.email.trim() ? payload.email.trim() : null,
+          typeof payload.email === "string" && payload.email.trim()
+            ? payload.email.trim()
+            : fallbackSnapshot?.email ?? null,
         emailVerified:
-          typeof payload.emailVerified === "boolean" ? payload.emailVerified : null,
+          typeof payload.emailVerified === "boolean"
+            ? payload.emailVerified
+            : fallbackSnapshot?.emailVerified ?? null,
         login:
-          typeof payload.login === "string" && payload.login.trim() ? payload.login.trim() : null,
+          typeof payload.login === "string" && payload.login.trim()
+            ? payload.login.trim()
+            : fallbackSnapshot?.login ?? null,
         displayName:
           typeof payload.displayName === "string" && payload.displayName.trim()
             ? payload.displayName.trim()
-            : null,
-        profileId: normalizeSupabaseInteger(payload.profileId),
+            : fallbackSnapshot?.displayName ?? null,
+        profileId: resolvedProfileId,
         photoURL:
-          typeof payload.photoURL === "string" && payload.photoURL ? payload.photoURL : null,
+          typeof payload.photoURL === "string" && payload.photoURL
+            ? payload.photoURL
+            : fallbackSnapshot?.photoURL ?? null,
         avatarPath:
-          typeof payload.avatarPath === "string" && payload.avatarPath ? payload.avatarPath : null,
+          typeof payload.avatarPath === "string" && payload.avatarPath
+            ? payload.avatarPath
+            : fallbackSnapshot?.avatarPath ?? null,
         avatarType:
-          typeof payload.avatarType === "string" && payload.avatarType ? payload.avatarType : null,
-        avatarSize: normalizeSupabaseInteger(payload.avatarSize),
-        roles: normalizeSupabaseTextArray(payload.roles),
-        isBanned: payload.isBanned === true,
+          typeof payload.avatarType === "string" && payload.avatarType
+            ? payload.avatarType
+            : fallbackSnapshot?.avatarType ?? null,
+        avatarSize:
+          normalizeSupabaseInteger(payload.avatarSize) ??
+          normalizeSupabaseInteger(fallbackSnapshot?.avatarSize),
+        roles:
+          Array.isArray(payload.roles) && payload.roles.length
+            ? normalizeSupabaseTextArray(payload.roles)
+            : normalizeSupabaseTextArray(fallbackSnapshot?.roles),
+        isBanned: hasOwn(payload, "isBanned")
+          ? payload.isBanned === true
+          : fallbackSnapshot?.isBanned === true,
         bannedAt:
           hasOwn(payload, "bannedAt") && typeof payload.bannedAt === "string" && payload.bannedAt
             ? payload.bannedAt
-            : null,
+            : fallbackSnapshot?.bannedAt ?? null,
         verificationRequired:
           typeof payload.verificationRequired === "boolean"
             ? payload.verificationRequired
-            : null,
-        providerIds: normalizeProviderIdsList(payload.providerIds),
+            : fallbackSnapshot?.verificationRequired ?? null,
+        providerIds:
+          Array.isArray(payload.providerIds) && payload.providerIds.length
+            ? normalizeProviderIdsList(payload.providerIds)
+            : normalizeProviderIdsList(fallbackSnapshot?.providerIds),
         creationTime:
           typeof payload.creationTime === "string" && payload.creationTime
             ? payload.creationTime
-            : null,
+            : fallbackSnapshot?.creationTime ?? null,
         lastSignInTime:
           typeof payload.lastSignInTime === "string" && payload.lastSignInTime
             ? payload.lastSignInTime
-            : null,
-        loginHistory: Array.isArray(payload.loginHistory) ? payload.loginHistory : [],
-        visitHistory: normalizeVisitHistory(payload.visitHistory),
+            : fallbackSnapshot?.lastSignInTime ?? null,
+        loginHistory:
+          Array.isArray(payload.loginHistory) ? payload.loginHistory : fallbackSnapshot?.loginHistory ?? [],
+        visitHistory:
+          Array.isArray(payload.visitHistory)
+            ? normalizeVisitHistory(payload.visitHistory)
+            : normalizeVisitHistory(fallbackSnapshot?.visitHistory),
         presence:
           payload.presence && typeof payload.presence === "object"
             ? normalizePresence(payload.presence, window.location.pathname)
-            : normalizePresence(null, window.location.pathname),
+            : normalizePresence(fallbackSnapshot?.presence, window.location.pathname),
       })
     );
   };
@@ -5733,7 +5796,9 @@
           }
         }
 
-        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse);
+        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse, {
+          profileId,
+        });
 
         if (mappedSnapshot) {
           return mappedSnapshot;
@@ -5826,7 +5891,9 @@
           }
         }
 
-        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse);
+        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse, {
+          profileId,
+        });
 
         if (mappedSnapshot) {
           return mappedSnapshot;
@@ -5917,7 +5984,9 @@
           }
         }
 
-        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse);
+        const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(supabaseResponse, {
+          profileId,
+        });
 
         if (mappedSnapshot) {
           return mappedSnapshot;
@@ -6143,6 +6212,8 @@
           ...supabaseResponse,
           isBanned: responseIsBanned,
           bannedAt: responseBannedAt,
+        }, {
+          profileId,
         });
 
         if (mappedSnapshot) {
@@ -6317,6 +6388,8 @@
         const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot({
           ...supabaseResponse,
           roles: responseRoles,
+        }, {
+          profileId,
         });
 
         if (mappedSnapshot) {
