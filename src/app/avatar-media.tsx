@@ -90,6 +90,23 @@ type AvatarMediaProps = {
   decoding?: "auto" | "async" | "sync";
 };
 
+const initialsFromLabel = (value: string) => {
+  const parts = value
+    .split(/[\s@._-]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (!parts.length) {
+    return "U";
+  }
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 2);
+};
+
 export function AvatarMedia({
   alt,
   className,
@@ -100,10 +117,12 @@ export function AvatarMedia({
 }: AvatarMediaProps) {
   const [resolvedSrc, setResolvedSrc] = useState(src);
   const [renderKey, setRenderKey] = useState(0);
+  const [hasLoadError, setHasLoadError] = useState(false);
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let animationFrameId = 0;
+    setHasLoadError(false);
 
     if (!isAnimatedAvatarSource(src)) {
       setResolvedSrc(src);
@@ -137,6 +156,20 @@ export function AvatarMedia({
     };
   }, [src]);
 
+  if (!resolvedSrc || hasLoadError) {
+    return (
+      <span
+        role="img"
+        aria-label={alt}
+        title={alt}
+        className={`${className} flex items-center justify-center bg-[#171012] text-[11px] font-black uppercase text-[#ffb7c5]`}
+        style={style}
+      >
+        {initialsFromLabel(alt)}
+      </span>
+    );
+  }
+
   if (isVideoAvatarSource(resolvedSrc)) {
     return (
       <video
@@ -152,6 +185,9 @@ export function AvatarMedia({
         disablePictureInPicture
         className={className}
         style={style}
+        onError={() => {
+          setHasLoadError(true);
+        }}
       />
     );
   }
@@ -185,6 +221,9 @@ export function AvatarMedia({
       decoding={isAnimatedAvatarSource(resolvedSrc) ? undefined : decoding}
       className={className}
       style={style}
+      onError={() => {
+        setHasLoadError(true);
+      }}
     />
   );
 }
