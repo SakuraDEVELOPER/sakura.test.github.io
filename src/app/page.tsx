@@ -656,9 +656,7 @@ function HeaderAuth() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [authLoadError, setAuthLoadError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<AuthUserSnapshot | null>(() =>
-    readCachedAuthSnapshot<AuthUserSnapshot>()
-  );
+  const [currentUser, setCurrentUser] = useState<AuthUserSnapshot | null>(null);
   const [identifier, setIdentifier] = useState("");
   const [profileName, setProfileName] = useState("");
   const [loginName, setLoginName] = useState("");
@@ -685,6 +683,10 @@ function HeaderAuth() {
     }
 
     let unsubscribe: () => void = () => {};
+
+    setCurrentUser(
+      window.sakuraCurrentUserSnapshot ?? readCachedAuthSnapshot<AuthUserSnapshot>() ?? null
+    );
 
     const syncAuthBridge = () => {
       if (window.sakuraFirebaseAuth) {
@@ -1167,9 +1169,7 @@ function HeaderAuth() {
     }
   };
 
-  const globalProfileId =
-    typeof window !== "undefined" ? window.sakuraCurrentUserSnapshot?.profileId ?? null : null;
-  const resolvedProfileId = visibleUser?.profileId ?? globalProfileId ?? null;
+  const resolvedProfileId = visibleUser?.profileId ?? null;
   const resolvedProfileHref = profileHref(resolvedProfileId);
   const userLabel = visibleUser ? buildUserLabel(visibleUser) : "Signed in";
   const userInitials = visibleUser ? buildUserInitials(visibleUser) : "SA";
@@ -1608,14 +1608,14 @@ function HeaderAuth() {
 }
 
 export default function Home() {
-  const [siteOnlineCount, setSiteOnlineCount] = useState<number | null>(() =>
-    readCachedSiteOnlineCount()
-  );
+  const [siteOnlineCount, setSiteOnlineCount] = useState<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
+
+    setSiteOnlineCount(readCachedSiteOnlineCount());
 
     let isCancelled = false;
     let intervalId = 0;

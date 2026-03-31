@@ -1015,20 +1015,29 @@ const getInitialRequestedProfileId = () => {
   if (fallback) window.sessionStorage.removeItem(PROFILE_PATH_STORAGE_KEY);
   return parseProfileId(window.location.pathname) ?? parseProfileId(fallback);
 };
-const getInitialCurrentUser = () =>
+const getClientCurrentUser = () =>
   typeof window === "undefined"
     ? null
     : getWindowState().sakuraCurrentUserSnapshot ??
       readCachedAuthSnapshot<UserProfile>() ??
       null;
-const getInitialProfile = (currentUser: UserProfile | null, requestedProfileId: number | null) =>
+const getClientProfile = (currentUser: UserProfile | null, requestedProfileId: number | null) =>
   currentUser && !currentUser.isAnonymous && (requestedProfileId === null || (currentUser.profileId ?? null) === requestedProfileId)
     ? currentUser
     : readCachedProfileSnapshot<UserProfile>(requestedProfileId);
-const getInitialBootstrap = () => {
-  const currentUser = getInitialCurrentUser();
+const EMPTY_BOOTSTRAP = {
+  authReady: false,
+  authStateSettled: false,
+  authError: null as string | null,
+  currentUser: null as UserProfile | null,
+  requestedProfileId: null as number | null,
+  profile: null as UserProfile | null,
+  comments: [] as ProfileComment[],
+};
+const getClientBootstrap = () => {
+  const currentUser = getClientCurrentUser();
   const requestedProfileId = getInitialRequestedProfileId();
-  const initialProfile = getInitialProfile(currentUser, requestedProfileId);
+  const initialProfile = getClientProfile(currentUser, requestedProfileId);
   const currentUserProfileId =
     currentUser && !currentUser.isAnonymous && typeof currentUser.profileId === "number"
       ? currentUser.profileId
@@ -1068,13 +1077,13 @@ export default function ProfilePage() {
   const router = useRouter();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const adminAvatarInputRef = useRef<HTMLInputElement | null>(null);
-  const [bootstrap] = useState(getInitialBootstrap);
+  const [bootstrap] = useState(() => EMPTY_BOOTSTRAP);
   const [authReady, setAuthReady] = useState(bootstrap.authReady);
   const [authStateSettled, setAuthStateSettled] = useState(bootstrap.authStateSettled);
   const [authError, setAuthError] = useState<string | null>(bootstrap.authError);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(bootstrap.currentUser);
   const [profile, setProfile] = useState<UserProfile | null>(bootstrap.profile);
-  const [requestedProfileId] = useState<number | null>(bootstrap.requestedProfileId);
+  const [requestedProfileId, setRequestedProfileId] = useState<number | null>(bootstrap.requestedProfileId);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -1136,9 +1145,7 @@ export default function ProfilePage() {
   const [isCommentUpdating, setIsCommentUpdating] = useState(false);
   const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
   const [confirmingCommentDeleteId, setConfirmingCommentDeleteId] = useState<string | null>(null);
-  const [siteOnlineCount, setSiteOnlineCount] = useState<number | null>(() =>
-    readCachedSiteOnlineCount()
-  );
+  const [siteOnlineCount, setSiteOnlineCount] = useState<number | null>(null);
   const [profileThemeIsPlaying, setProfileThemeIsPlaying] = useState(false);
   const [profileThemeCurrentTime, setProfileThemeCurrentTime] = useState(0);
   const [profileThemeDuration, setProfileThemeDuration] = useState(0);
@@ -1162,6 +1169,16 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setHasHydrated(true);
+
+    const nextBootstrap = getClientBootstrap();
+    setAuthReady(nextBootstrap.authReady);
+    setAuthStateSettled(nextBootstrap.authStateSettled);
+    setAuthError(nextBootstrap.authError);
+    setCurrentUser(nextBootstrap.currentUser);
+    setRequestedProfileId(nextBootstrap.requestedProfileId);
+    setProfile(nextBootstrap.profile);
+    setComments(nextBootstrap.comments);
+    setSiteOnlineCount(readCachedSiteOnlineCount());
   }, []);
 
   useEffect(() => {

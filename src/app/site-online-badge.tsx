@@ -145,9 +145,7 @@ export function SiteOnlineBadge({
   const [isHovered, setIsHovered] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [users, setUsers] = useState<SiteOnlineUser[]>(() =>
-    readCachedSiteOnlineUsers<SiteOnlineUser>()
-  );
+  const [users, setUsers] = useState<SiteOnlineUser[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const isActive = isHovered || isOpen;
@@ -157,6 +155,10 @@ export function SiteOnlineBadge({
     effectiveCount === null
       ? "Online on site"
       : `${effectiveCount} ${effectiveCount === 1 ? "user" : "users"} online`;
+
+  useEffect(() => {
+    setUsers(readCachedSiteOnlineUsers<SiteOnlineUser>());
+  }, []);
 
   useEffect(() => {
     if (!isOpen) {
