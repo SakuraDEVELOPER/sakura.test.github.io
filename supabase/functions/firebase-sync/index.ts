@@ -523,6 +523,118 @@ const handleAdminSetProfileEmailVerification = async (
   });
 };
 
+const handleAdminSetProfileBan = async (
+  actor: RequestActor,
+  body: JsonRecord,
+) => {
+  const profileId = normalizeInteger(body.profileId);
+  const requestedIsBanned = body.isBanned === true;
+
+  if (!profileId || profileId <= 0) {
+    return json({ error: "Target profile id is required." }, 400);
+  }
+
+  const actorProfile = await loadActorProfile(actor);
+
+  if (!canManageRoles(actorProfile.roles)) {
+    return json({ error: "Only root and co-owner accounts can use this admin action." }, 403);
+  }
+
+  const targetProfile = await loadProfileByProfileId(profileId);
+
+  if (!targetProfile) {
+    return json({
+      ok: true,
+      action: "admin_set_profile_ban",
+      updated: false,
+      profileId,
+      profile: null,
+    });
+  }
+
+  ensureActorCanManageTargetProfile(actorProfile.roles, targetProfile.roles);
+
+  if (
+    actorProfile.profileId === targetProfile.profileId &&
+    requestedIsBanned
+  ) {
+    return json({ error: "You cannot ban your own account." }, 403);
+  }
+
+  const nextBannedAt = requestedIsBanned ? nowIso() : null;
+  const { data: updatedProfileRow, error: updateProfileError } = await supabaseAdmin
+    .from("profiles")
+    .update({
+      is_banned: requestedIsBanned,
+      banned_at: nextBannedAt,
+      updated_at: nowIso(),
+    })
+    .eq("profile_id", profileId)
+    .select(PROFILE_COMPATIBILITY_SELECT)
+    .maybeSingle();
+
+  if (updateProfileError) {
+    throw updateProfileError;
+  }
+
+  const updatedProfile =
+    updatedProfileRow && typeof updatedProfileRow === "object"
+      ? {
+          firebaseUid: normalizeString(updatedProfileRow.firebase_uid, 128),
+          profileId: normalizeInteger(updatedProfileRow.profile_id),
+          roles: normalizeRoles(updatedProfileRow.roles),
+          authUserId: normalizeString(updatedProfileRow.auth_user_id, 128),
+          email: normalizeString(updatedProfileRow.email, 320),
+          emailVerified:
+            typeof updatedProfileRow.email_verified === "boolean"
+              ? updatedProfileRow.email_verified
+              : null,
+          verificationRequired:
+            typeof updatedProfileRow.verification_required === "boolean"
+              ? updatedProfileRow.verification_required
+              : null,
+          providerIds: normalizeRoles(updatedProfileRow.provider_ids),
+          displayName: normalizeString(updatedProfileRow.display_name, 96),
+          avatarPath: normalizeStorageObjectPath(updatedProfileRow.avatar_path),
+        }
+      : targetProfile;
+
+  if (updatedProfile.firebaseUid) {
+    try {
+      await getFirebaseAdminFirestore().collection("users").doc(updatedProfile.firebaseUid).set(
+        {
+          isBanned: requestedIsBanned,
+          bannedAt: nextBannedAt,
+          updatedAt: nowIso(),
+        },
+        { merge: true },
+      );
+    } catch (error) {
+      console.error("Firebase Firestore ban compatibility sync failed:", error);
+    }
+  }
+
+  return json({
+    ok: true,
+    action: "admin_set_profile_ban",
+    updated: true,
+    profileId,
+    profile: {
+      profileId: updatedProfile.profileId,
+      authUserId: updatedProfile.authUserId,
+      firebaseUid: updatedProfile.firebaseUid,
+      email: updatedProfile.email,
+      emailVerified: updatedProfile.emailVerified,
+      verificationRequired: updatedProfile.verificationRequired,
+      providerIds: Array.isArray(updatedProfile.providerIds) ? updatedProfile.providerIds : [],
+      displayName: updatedProfile.displayName,
+      roles: Array.isArray(updatedProfile.roles) ? updatedProfile.roles : [],
+      isBanned: requestedIsBanned,
+      bannedAt: nextBannedAt,
+    },
+  });
+};
+
 const getErrorMessage = (error: unknown) =>
   error instanceof Error
     ? error.message
@@ -1443,6 +1555,8 @@ Deno.serve(async (request) => {
         return await handleDeleteProfileAccountData(actor);
       case "admin_delete_profile_account_data":
         return await handleAdminDeleteProfileAccountData(actor, body);
+      case "admin_set_profile_ban":
+        return await handleAdminSetProfileBan(actor, body);
       case "admin_set_profile_email_verification":
         return await handleAdminSetProfileEmailVerification(actor, body);
       case "get_private_profile_fields":

@@ -6173,6 +6173,14 @@
       }
 
       const isBanned = Boolean(nextIsBanned);
+      let ensuredRootContext = null;
+      const ensureRootContext = async () => {
+        if (!ensuredRootContext) {
+          ensuredRootContext = await ensureRootActorSnapshot();
+        }
+
+        return ensuredRootContext;
+      };
       const supabaseResponse = await callSupabaseAuthenticatedRpc(
         "admin_set_profile_ban_rpc",
         {
@@ -6231,7 +6239,36 @@
         }
       }
 
-      const { user, actorSnapshot } = await ensureRootActorSnapshot();
+      const { user, actorSnapshot } = await ensureRootContext();
+
+      const syncResponse = await requestSupabaseSyncActionOrThrow(
+        user,
+        "admin_set_profile_ban",
+        {
+          profileId,
+          isBanned,
+        },
+        "ban/persist-failed",
+        "Ban status could not be saved."
+      ).catch(() => null);
+
+      if (syncResponse && typeof syncResponse === "object") {
+        const responseProfile =
+          syncResponse.profile && typeof syncResponse.profile === "object"
+            ? syncResponse.profile
+            : null;
+
+        if (responseProfile) {
+          const mappedSnapshot = mapSupabaseRpcProfilePayloadToSnapshot(responseProfile, {
+            profileId,
+          });
+
+          if (mappedSnapshot) {
+            return mappedSnapshot;
+          }
+        }
+      }
+
       const targetDoc = await findUserByProfileId(profileId);
 
       if (!targetDoc) {
