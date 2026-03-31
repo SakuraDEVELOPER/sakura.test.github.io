@@ -1637,6 +1637,15 @@ export default function ProfilePage() {
   const primaryName = activeProfile ? nameOf(activeProfile) : "Sakura User";
   const initials = activeProfile ? initialsOf(activeProfile) : "SA";
   const activeProfileRoleSignature = activeProfile?.roles?.join("|") ?? "";
+
+  useEffect(() => {
+    if (!activeProfile?.profileId) {
+      return;
+    }
+
+    writeCachedProfileComments(activeProfile.profileId, comments);
+  }, [activeProfile?.profileId, comments]);
+
   const applyUpdatedProfileSnapshot = (snapshot: UserProfile | null) => {
     if (!snapshot) {
       return;

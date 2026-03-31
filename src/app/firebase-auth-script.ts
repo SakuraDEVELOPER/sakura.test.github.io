@@ -1139,7 +1139,7 @@
           null,
         emailVerified: Boolean(user.emailVerified),
         profileId: null,
-        photoURL: user.photoURL ?? null,
+        photoURL: null,
         providerIds: getProviderIds(user),
         roles: ["user"],
         isBanned: false,
@@ -1161,7 +1161,7 @@
     emailVerified:
       typeof details.emailVerified === "boolean" ? details.emailVerified : Boolean(user.emailVerified),
     profileId: typeof details.profileId === "number" ? details.profileId : null,
-    photoURL: resolvePhotoURL(details, user.photoURL ?? null),
+    photoURL: resolvePhotoURL(details, null),
     avatarPath: resolveAvatarPath(details, null),
     avatarType: resolveAvatarType(details, null),
     avatarSize: resolveAvatarSize(details, null),
@@ -1191,7 +1191,7 @@
           login: details.login ?? null,
           displayName: details.displayName ?? user.displayName ?? details.login ?? null,
           profileId: typeof details.profileId === "number" ? details.profileId : null,
-          photoURL: resolvePhotoURL(details, user.photoURL ?? null),
+          photoURL: resolvePhotoURL(details, null),
           avatarPath: resolveAvatarPath(details, null),
           avatarType: resolveAvatarType(details, null),
           avatarSize: resolveAvatarSize(details, null),
@@ -1972,7 +1972,7 @@
           existingData?.email?.split("@")[0] ??
           user.email?.split("@")[0] ??
           "Sakura User",
-        photoURL: resolvePhotoURL(existingData, user.photoURL ?? null),
+        photoURL: resolvePhotoURL(existingData, null),
         roles,
         isBanned: existingData?.isBanned === true,
         bannedAt: resolveBannedAt(existingData),
@@ -2809,12 +2809,12 @@
       });
       const displayCommentPayload = {
         ...persistedCommentPayload,
-        authorPhotoURL: authorSnapshot?.photoURL ?? user.photoURL ?? null,
+        authorPhotoURL: authorSnapshot?.photoURL ?? null,
         authorAccentRole: pickCommentAccentRole(authorSnapshot?.roles ?? [], "user"),
       };
       const photoCommentPayload = {
         ...persistedCommentPayload,
-        authorPhotoURL: authorSnapshot?.photoURL ?? user.photoURL ?? null,
+        authorPhotoURL: authorSnapshot?.photoURL ?? null,
       };
       const timestampCommentPayload = {
         ...stripNullishFields({
