@@ -185,6 +185,8 @@ const EMAIL_VERIFICATION_LOCK_EVENT = "sakura-email-verification-lock";
 const PRESENCE_DIRTY_EVENT = "sakura-presence-dirty";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
 const LOGIN_PATTERN = /^[A-Za-zА-Яа-яЁё0-9._-]+$/;
+const AUTH_BOOT_RETRY_INTERVAL_MS = 500;
+const AUTH_BOOT_TIMEOUT_MS = 8000;
 
 const ROLE_CHIP_ORDER = new Map([
   ["banned", 0],
@@ -765,6 +767,47 @@ function HeaderAuth() {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || authReady || authLoadError || !isModalOpen) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const waitForBoot = async () => {
+      const startedAt = Date.now();
+
+      while (!isCancelled && Date.now() - startedAt < AUTH_BOOT_TIMEOUT_MS) {
+        if (window.sakuraFirebaseAuth) {
+          setAuthReady(true);
+          setAuthLoadError(null);
+          setCurrentUser(window.sakuraCurrentUserSnapshot ?? null);
+          return;
+        }
+
+        if (window.sakuraFirebaseAuthError) {
+          setAuthLoadError(window.sakuraFirebaseAuthError);
+          return;
+        }
+
+        requestFirebaseAuthBoot();
+        await new Promise((resolve) => window.setTimeout(resolve, AUTH_BOOT_RETRY_INTERVAL_MS));
+      }
+
+      if (!isCancelled && !window.sakuraFirebaseAuth && !window.sakuraFirebaseAuthError) {
+        setAuthLoadError(
+          "Firebase Auth is taking too long to start. Refresh the page and try again."
+        );
+      }
+    };
+
+    void waitForBoot();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authReady, authLoadError, isModalOpen]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !currentUserId || !window.sakuraFirebaseAuth) {

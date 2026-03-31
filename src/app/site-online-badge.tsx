@@ -23,6 +23,12 @@ type SiteOnlineBridge = {
   getSiteOnlineUsers?: () => Promise<SiteOnlineUser[]>;
 };
 
+type SiteOnlineRuntimeWindow = Window & {
+  sakuraFirebaseAuth?: SiteOnlineBridge;
+  sakuraStartFirebaseAuth?: () => Promise<unknown> | unknown;
+  sakuraFirebaseAuthError?: string;
+};
+
 type SiteOnlineBadgeProps = {
   count: number | null;
   className?: string;
@@ -31,6 +37,8 @@ type SiteOnlineBadgeProps = {
 };
 
 const PRESENCE_DIRTY_EVENT = "sakura-presence-dirty";
+const ONLINE_BRIDGE_RETRY_INTERVAL_MS = 250;
+const ONLINE_BRIDGE_WAIT_TIMEOUT_MS = 5000;
 
 function buildInitials(user: SiteOnlineUser) {
   const source = user.displayName || user.login || (user.profileId ? `P${user.profileId}` : "U");
@@ -184,10 +192,32 @@ export function SiteOnlineBadge({
 
     let isCancelled = false;
 
-    const loadUsers = async () => {
-      const runtimeWindow = window as Window & { sakuraFirebaseAuth?: SiteOnlineBridge };
+    const waitForOnlineBridge = async () => {
+      const runtimeWindow = window as SiteOnlineRuntimeWindow;
+      const startedAt = Date.now();
 
-      if (!runtimeWindow.sakuraFirebaseAuth?.getSiteOnlineUsers) {
+      while (!isCancelled && Date.now() - startedAt < ONLINE_BRIDGE_WAIT_TIMEOUT_MS) {
+        if (runtimeWindow.sakuraFirebaseAuth?.getSiteOnlineUsers) {
+          return runtimeWindow.sakuraFirebaseAuth;
+        }
+
+        if (runtimeWindow.sakuraFirebaseAuthError) {
+          return null;
+        }
+
+        void runtimeWindow.sakuraStartFirebaseAuth?.();
+        await new Promise((resolve) => window.setTimeout(resolve, ONLINE_BRIDGE_RETRY_INTERVAL_MS));
+      }
+
+      return runtimeWindow.sakuraFirebaseAuth?.getSiteOnlineUsers
+        ? runtimeWindow.sakuraFirebaseAuth
+        : null;
+    };
+
+    const loadUsers = async () => {
+      const bridge = await waitForOnlineBridge();
+
+      if (!bridge?.getSiteOnlineUsers) {
         setUsers([]);
         setLoadError("Online user list is unavailable right now.");
         return;
@@ -197,7 +227,7 @@ export function SiteOnlineBadge({
       setLoadError(null);
 
       try {
-        const nextUsers = await runtimeWindow.sakuraFirebaseAuth.getSiteOnlineUsers();
+        const nextUsers = await bridge.getSiteOnlineUsers();
 
         if (!isCancelled) {
           const normalizedUsers = Array.isArray(nextUsers) ? nextUsers : [];
