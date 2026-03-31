@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { cert, getApps, initializeApp } from "npm:firebase-admin/app";
 import { getAuth as getFirebaseAdminAuthBase } from "npm:firebase-admin/auth";
+import { getFirestore as getFirebaseAdminFirestoreBase } from "npm:firebase-admin/firestore";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@6";
 
 const corsHeaders = {
@@ -106,7 +107,7 @@ const parseFirebaseServiceAccount = () => {
   };
 };
 
-const getFirebaseAdminAuth = () => {
+const getFirebaseAdminApp = () => {
   const serviceAccount = parseFirebaseServiceAccount();
 
   if (!serviceAccount.clientEmail || !serviceAccount.privateKey) {
@@ -125,8 +126,10 @@ const getFirebaseAdminAuth = () => {
     });
   }
 
-  return getFirebaseAdminAuthBase();
+  return getApps()[0];
 };
+const getFirebaseAdminAuth = () => getFirebaseAdminAuthBase(getFirebaseAdminApp());
+const getFirebaseAdminFirestore = () => getFirebaseAdminFirestoreBase(getFirebaseAdminApp());
 
 const normalizeIsoString = (value: unknown) => {
   if (typeof value !== "string" || !value.trim()) {
@@ -347,6 +350,77 @@ const findSupabaseAuthUserIdByEmail = async (email: string) => {
   }
 
   return null;
+};
+const deleteFirebaseFirestoreAccountData = async (
+  firebaseUid: string,
+  profileId: number | null,
+) => {
+  const firestore = getFirebaseAdminFirestore();
+  const usersCollection = firestore.collection("users");
+  const profileCommentsCollection = firestore.collection("profileComments");
+  const countersRef = firestore.collection("meta").doc("counters");
+  const userRef = usersCollection.doc(firebaseUid);
+  const userSnapshot = await userRef.get();
+  const effectiveProfileId =
+    profileId ?? normalizeInteger(userSnapshot.data()?.profileId ?? null);
+  const refsByPath = new Map<string, FirebaseFirestore.DocumentReference>();
+
+  if (effectiveProfileId && effectiveProfileId > 0) {
+    const profileCommentSnapshot = await profileCommentsCollection
+      .where("profileId", "==", effectiveProfileId)
+      .get();
+
+    profileCommentSnapshot.forEach((commentDoc) => {
+      refsByPath.set(commentDoc.ref.path, commentDoc.ref);
+    });
+  }
+
+  const authorCommentSnapshot = await profileCommentsCollection
+    .where("authorUid", "==", firebaseUid)
+    .get();
+
+  authorCommentSnapshot.forEach((commentDoc) => {
+    refsByPath.set(commentDoc.ref.path, commentDoc.ref);
+  });
+
+  if (userSnapshot.exists) {
+    refsByPath.set(userRef.path, userRef);
+  }
+
+  for (const batchRefs of chunkArray([...refsByPath.values()], 400)) {
+    const batch = firestore.batch();
+
+    batchRefs.forEach((ref) => {
+      batch.delete(ref);
+    });
+
+    await batch.commit();
+  }
+
+  const remainingUsersSnapshot = await usersCollection.get();
+  let maxProfileId = 0;
+
+  remainingUsersSnapshot.forEach((remainingUserDoc) => {
+    const candidateProfileId = normalizeInteger(remainingUserDoc.data()?.profileId ?? null);
+
+    if (candidateProfileId && candidateProfileId > maxProfileId) {
+      maxProfileId = candidateProfileId;
+    }
+  });
+
+  await countersRef.set(
+    {
+      profileCount: maxProfileId,
+      updatedAt: nowIso(),
+    },
+    { merge: true },
+  );
+
+  return {
+    deletedCommentCount: refsByPath.size - (userSnapshot.exists ? 1 : 0),
+    profileCount: maxProfileId,
+    profileId: effectiveProfileId,
+  };
 };
 
 const authorizeStorageObjectPath = async (
@@ -581,7 +655,8 @@ const handleDeleteProfileAccountData = async (
   actor: { uid: string; email: string | null },
 ) => {
   const actorProfile = await loadActorProfile(actor.uid);
-  const profileId = actorProfile.profileId;
+  const firebaseCleanup = await deleteFirebaseFirestoreAccountData(actor.uid, actorProfile.profileId);
+  const profileId = firebaseCleanup.profileId ?? actorProfile.profileId;
   const mediaPaths = new Set<string>();
 
   if (actorProfile.avatarPath) {
@@ -654,6 +729,7 @@ const handleDeleteProfileAccountData = async (
     ok: true,
     action: "delete_profile_account_data",
     profileId,
+    profileCount: firebaseCleanup.profileCount,
     deletedSupabaseAuthUserId: supabaseAuthUserId,
     deletedFirebaseUid: actor.uid,
   });
@@ -690,6 +766,14 @@ const handleAdminDeleteProfileAccountData = async (
   if (targetProfile.firebaseUid && targetProfile.firebaseUid === actor.uid) {
     return json({ error: "Use the owner delete flow for your own account." }, 403);
   }
+
+  const firebaseCleanup =
+    targetProfile.firebaseUid
+      ? await deleteFirebaseFirestoreAccountData(
+          targetProfile.firebaseUid,
+          targetProfile.profileId,
+        )
+      : { profileId: targetProfile.profileId, profileCount: null };
 
   const mediaPaths = new Set<string>();
 
@@ -764,7 +848,8 @@ const handleAdminDeleteProfileAccountData = async (
     ok: true,
     action: "admin_delete_profile_account_data",
     deleted: true,
-    profileId: targetProfile.profileId,
+    profileId: firebaseCleanup.profileId ?? targetProfile.profileId,
+    profileCount: firebaseCleanup.profileCount ?? null,
     deletedSupabaseAuthUserId: supabaseAuthUserId,
     deletedFirebaseUid: targetProfile.firebaseUid ?? null,
   });

@@ -2843,24 +2843,6 @@
 
       stopPresenceTracking();
 
-      try {
-        await withTimeout(
-          deleteFirestoreProfileAccountData(user.uid, snapshot),
-          ACCOUNT_DELETE_TIMEOUT_MS,
-          () =>
-            createFirebaseError(
-              "account/delete-timeout",
-              "Account deletion timed out while cleaning Firebase data. Try again."
-            )
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "Account data could not be deleted from Firebase.";
-        throw createFirebaseError("account/delete-firestore-failed", message);
-      }
-
       await withTimeout(
         requestSupabaseSyncActionOrThrow(
           user,
@@ -2928,18 +2910,6 @@
           "admin/self-delete-forbidden",
           "Use the profile delete button for your own account."
         );
-      }
-
-      const targetSnapshot = toStoredUserSnapshot(targetDoc.id, targetDoc.data());
-
-      try {
-        await deleteFirestoreProfileAccountData(targetDoc.id, targetSnapshot);
-      } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "Account data could not be deleted from Firebase.";
-        throw createFirebaseError("account/delete-firestore-failed", message);
       }
 
       await requestSupabaseSyncActionOrThrow(
