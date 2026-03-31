@@ -5015,18 +5015,68 @@
     };
 
     const updateAvatar = async (file) => {
+      const currentSupabaseDetails = await loadCurrentAuthProfileFromSupabaseRpcWithRetry({
+        attempts: 2,
+        delayMs: 120,
+      });
       const user = auth.currentUser;
 
-      if (!user) {
+      if (!user && !hasAssignedProfileId(currentSupabaseDetails)) {
         throw createFirebaseError("auth/no-current-user", "Sign in again to update your avatar.");
       }
 
-      await ensureVerifiedSessionAccess(user, "Verify your email before updating the avatar.");
+      if (user) {
+        await ensureVerifiedSessionAccess(user, "Verify your email before updating the avatar.");
+      } else if (isEmailVerificationLocked(currentSupabaseDetails)) {
+        throw createFirebaseError(
+          "auth/email-not-verified",
+          "Verify your email before updating the avatar."
+        );
+      }
 
-      const avatarUpload = await prepareAvatarUpload(file, user.uid);
+      const targetUid =
+        user?.uid ??
+        (typeof currentSupabaseDetails?.firebaseUid === "string" && currentSupabaseDetails.firebaseUid
+          ? currentSupabaseDetails.firebaseUid
+          : typeof currentSupabaseDetails?.authUserId === "string" && currentSupabaseDetails.authUserId
+            ? currentSupabaseDetails.authUserId
+            : null);
+
+      const avatarUpload = await prepareAvatarUpload(file, targetUid);
 
       if (!avatarUpload?.photoURL) {
         throw createFirebaseError("storage/invalid-file", "Choose an image before uploading.");
+      }
+
+      const supabaseResponse = await callSupabaseAuthenticatedRpc(
+        "update_current_profile_avatar_rpc",
+        {
+          target_photo_url: avatarUpload.photoURL,
+          target_avatar_path: avatarUpload.avatarPath ?? null,
+          target_avatar_type: avatarUpload.avatarType ?? null,
+          target_avatar_size: avatarUpload.avatarSize ?? null,
+        },
+        "Avatar could not be saved."
+      );
+
+      if (supabaseResponse) {
+        if (user && !user.isAnonymous) {
+          try {
+            await updateProfile(user, { photoURL: avatarUpload.photoURL });
+          } catch (error) {
+            console.error("Failed to sync Firebase Auth photoURL after avatar update:", error);
+          }
+        }
+
+        const snapshot = await resolveSupabaseSessionSnapshotFallback();
+
+        if (snapshot) {
+          return snapshot;
+        }
+      }
+
+      if (!user) {
+        throw createFirebaseError("avatar/persist-failed", "Avatar could not be saved.");
       }
 
       const photoURL = avatarUpload.photoURL;
@@ -5106,13 +5156,55 @@
     };
 
     const deleteAvatar = async () => {
+      const currentSupabaseDetails = await loadCurrentAuthProfileFromSupabaseRpcWithRetry({
+        attempts: 2,
+        delayMs: 120,
+      });
       const user = auth.currentUser;
 
-      if (!user) {
+      if (!user && !hasAssignedProfileId(currentSupabaseDetails)) {
         throw createFirebaseError("auth/no-current-user", "Sign in again to update your avatar.");
       }
 
-      await ensureVerifiedSessionAccess(user, "Verify your email before updating the avatar.");
+      if (user) {
+        await ensureVerifiedSessionAccess(user, "Verify your email before updating the avatar.");
+      } else if (isEmailVerificationLocked(currentSupabaseDetails)) {
+        throw createFirebaseError(
+          "auth/email-not-verified",
+          "Verify your email before updating the avatar."
+        );
+      }
+
+      const supabaseResponse = await callSupabaseAuthenticatedRpc(
+        "update_current_profile_avatar_rpc",
+        {
+          target_photo_url: null,
+          target_avatar_path: null,
+          target_avatar_type: null,
+          target_avatar_size: null,
+        },
+        "Avatar could not be deleted."
+      );
+
+      if (supabaseResponse) {
+        if (user && !user.isAnonymous) {
+          try {
+            await updateProfile(user, { photoURL: null });
+          } catch (error) {
+            console.error("Failed to sync Firebase Auth photoURL after avatar delete:", error);
+          }
+        }
+
+        const snapshot = await resolveSupabaseSessionSnapshotFallback();
+
+        if (snapshot) {
+          return snapshot;
+        }
+      }
+
+      if (!user) {
+        throw createFirebaseError("avatar/delete-failed", "Avatar could not be deleted.");
+      }
 
       const userRef = userRefFor(user.uid);
       const existingSnapshot = await getDoc(userRef);
@@ -5371,11 +5463,63 @@
       });
     };
     const adminUpdateProfileAvatar = async (profileId, file) => {
-      const { actorSnapshot } = await ensureRootActorSnapshot();
-
       if (!Number.isInteger(profileId) || profileId <= 0) {
         throw createFirebaseError("profile/invalid-id", "Profile id must be a positive number.");
       }
+
+      const avatarUpload = await prepareAvatarUpload(file, profileId);
+
+      if (!avatarUpload?.photoURL) {
+        throw createFirebaseError("storage/invalid-file", "Choose an image before uploading.");
+      }
+
+      const supabaseResponse = await callSupabaseAuthenticatedRpc(
+        "admin_update_profile_avatar_rpc",
+        {
+          target_profile_id: profileId,
+          target_photo_url: avatarUpload.photoURL,
+          target_avatar_path: avatarUpload.avatarPath ?? null,
+          target_avatar_type: avatarUpload.avatarType ?? null,
+          target_avatar_size: avatarUpload.avatarSize ?? null,
+        },
+        "Avatar could not be saved."
+      );
+
+      if (supabaseResponse) {
+        if (window.sakuraCurrentUserSnapshot?.profileId === profileId) {
+          const currentSnapshot = await resolveSupabaseSessionSnapshotFallback();
+
+          if (currentSnapshot) {
+            return currentSnapshot;
+          }
+        }
+
+        const refreshedSnapshot = await getProfileById(profileId).catch(() => null);
+
+        if (refreshedSnapshot) {
+          return {
+            ...refreshedSnapshot,
+            photoURL:
+              typeof supabaseResponse?.photoURL === "string"
+                ? supabaseResponse.photoURL
+                : refreshedSnapshot.photoURL,
+            avatarPath:
+              typeof supabaseResponse?.avatarPath === "string"
+                ? supabaseResponse.avatarPath
+                : refreshedSnapshot.avatarPath,
+            avatarType:
+              typeof supabaseResponse?.avatarType === "string"
+                ? supabaseResponse.avatarType
+                : refreshedSnapshot.avatarType,
+            avatarSize:
+              typeof supabaseResponse?.avatarSize === "number"
+                ? supabaseResponse.avatarSize
+                : refreshedSnapshot.avatarSize,
+          };
+        }
+      }
+
+      const { actorSnapshot } = await ensureRootActorSnapshot();
 
       const targetDoc = await findUserByProfileId(profileId);
 
@@ -5384,12 +5528,6 @@
       }
 
       ensureActorCanManageTargetProfile(actorSnapshot?.roles ?? [], targetDoc.data()?.roles ?? []);
-
-      const avatarUpload = await prepareAvatarUpload(file, targetDoc.id);
-
-      if (!avatarUpload?.photoURL) {
-        throw createFirebaseError("storage/invalid-file", "Choose an image before uploading.");
-      }
 
       ensureAvatarUploadAllowedForRoles(
         avatarUpload.avatarType ?? null,
@@ -5438,11 +5576,45 @@
     };
 
     const adminDeleteProfileAvatar = async (profileId) => {
-      const { actorSnapshot } = await ensureRootActorSnapshot();
-
       if (!Number.isInteger(profileId) || profileId <= 0) {
         throw createFirebaseError("profile/invalid-id", "Profile id must be a positive number.");
       }
+
+      const supabaseResponse = await callSupabaseAuthenticatedRpc(
+        "admin_update_profile_avatar_rpc",
+        {
+          target_profile_id: profileId,
+          target_photo_url: null,
+          target_avatar_path: null,
+          target_avatar_type: null,
+          target_avatar_size: null,
+        },
+        "Avatar could not be deleted."
+      );
+
+      if (supabaseResponse) {
+        if (window.sakuraCurrentUserSnapshot?.profileId === profileId) {
+          const currentSnapshot = await resolveSupabaseSessionSnapshotFallback();
+
+          if (currentSnapshot) {
+            return currentSnapshot;
+          }
+        }
+
+        const refreshedSnapshot = await getProfileById(profileId).catch(() => null);
+
+        if (refreshedSnapshot) {
+          return {
+            ...refreshedSnapshot,
+            photoURL: null,
+            avatarPath: null,
+            avatarType: null,
+            avatarSize: null,
+          };
+        }
+      }
+
+      const { actorSnapshot } = await ensureRootActorSnapshot();
 
       const targetDoc = await findUserByProfileId(profileId);
 
