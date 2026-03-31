@@ -34,6 +34,11 @@ type CacheEntry<T> = {
   expiresAt: number;
 };
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const supabaseRestUrl = supabaseUrl ? supabaseUrl.replace(/\/+$/, "") + "/rest/v1" : "";
+const supabaseReadsEnabled = Boolean(supabaseRestUrl && supabaseAnonKey);
+
 export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeContext) => {
   const {
     auth,
@@ -75,6 +80,59 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   let lastPresenceSignature = "";
   let lastPresenceAt = 0;
   let stopPresenceTrackingInternal = () => {};
+
+  const normalizeSupabaseInteger = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.trunc(value);
+    }
+
+    if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
+      const parsedValue = Number(value);
+      return Number.isFinite(parsedValue) ? Math.trunc(parsedValue) : null;
+    }
+
+    return null;
+  };
+
+  const buildSupabaseRestUrl = (table: string, query: Record<string, unknown> = {}) => {
+    const url = new URL(supabaseRestUrl + "/" + table);
+
+    Object.entries(query).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        return;
+      }
+
+      url.searchParams.set(key, String(value));
+    });
+
+    return url.toString();
+  };
+
+  const fetchSupabaseRows = async (table: string, query: Record<string, unknown> = {}) => {
+    if (!supabaseReadsEnabled) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(buildSupabaseRestUrl(table, query), {
+        headers: {
+          apikey: supabaseAnonKey,
+          Authorization: "Bearer " + supabaseAnonKey,
+          "Accept-Profile": "public",
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = await response.json();
+      return Array.isArray(payload) ? payload : null;
+    } catch {
+      return null;
+    }
+  };
 
   const readPresenceTabRegistry = () => {
     try {
@@ -322,6 +380,80 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     } catch (error) {
       if (!isPermissionDeniedError(error)) {
         throw error;
+      }
+
+      const presenceRows = await fetchSupabaseRows("public_profile_presence", {
+        select: "profile_id,last_seen_at",
+        status: "eq.online",
+        is_online: "eq.true",
+        order: "last_seen_at.desc",
+        limit: 100,
+      });
+
+      if (Array.isArray(presenceRows) && presenceRows.length) {
+        const profileIds = presenceRows
+          .map((row) => normalizeSupabaseInteger((row as any)?.profile_id))
+          .filter((profileId): profileId is number => typeof profileId === "number" && profileId > 0);
+
+        if (profileIds.length) {
+          const profileRows = await fetchSupabaseRows("public_profiles", {
+            select: "profile_id,firebase_uid,display_name,login,photo_url,roles,is_banned",
+            profile_id: `in.(${profileIds.join(",")})`,
+          });
+
+          if (Array.isArray(profileRows)) {
+            const profileById = new Map<number, any>();
+
+            profileRows.forEach((row) => {
+              const profileId = normalizeSupabaseInteger((row as any)?.profile_id);
+
+              if (typeof profileId === "number" && profileId > 0) {
+                profileById.set(profileId, row);
+              }
+            });
+
+            return presenceRows
+              .map((presenceRow) => {
+                const profileId = normalizeSupabaseInteger((presenceRow as any)?.profile_id);
+
+                if (typeof profileId !== "number" || profileId <= 0) {
+                  return null;
+                }
+
+                const profileRow = profileById.get(profileId);
+
+                if (!profileRow || profileRow.is_banned === true) {
+                  return null;
+                }
+
+                return {
+                  uid:
+                    typeof profileRow.firebase_uid === "string" ? profileRow.firebase_uid : null,
+                  profileId,
+                  displayName:
+                    typeof profileRow.display_name === "string"
+                      ? profileRow.display_name
+                      : null,
+                  login:
+                    typeof profileRow.login === "string" ? profileRow.login : null,
+                  photoURL:
+                    typeof profileRow.photo_url === "string"
+                      ? profileRow.photo_url
+                      : null,
+                  accentRole: pickCommentAccentRole(
+                    Array.isArray(profileRow.roles) ? profileRow.roles : []
+                  ) ?? null,
+                  presence: {
+                    lastSeenAt:
+                      typeof (presenceRow as any)?.last_seen_at === "string"
+                        ? (presenceRow as any).last_seen_at
+                        : null,
+                  },
+                };
+              })
+              .filter(Boolean) as any[];
+          }
+        }
       }
 
       throw createFirebaseError(

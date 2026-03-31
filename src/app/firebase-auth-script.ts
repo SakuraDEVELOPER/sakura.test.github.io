@@ -1250,6 +1250,325 @@
     presence: normalizePresence(details.presence, null),
   });
 
+  const SUPABASE_PUBLIC_URL = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")};
+  const SUPABASE_PUBLIC_ANON_KEY = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "")};
+  const SUPABASE_REST_URL = SUPABASE_PUBLIC_URL
+    ? SUPABASE_PUBLIC_URL.replace(/\/+$/, "") + "/rest/v1"
+    : "";
+  const SUPABASE_PUBLIC_READS_ENABLED = Boolean(
+    SUPABASE_REST_URL && SUPABASE_PUBLIC_ANON_KEY
+  );
+  const SUPABASE_PROFILE_SELECT = [
+    "auth_user_id",
+    "firebase_uid",
+    "profile_id",
+    "email",
+    "email_verified",
+    "verification_required",
+    "login",
+    "display_name",
+    "photo_url",
+    "avatar_path",
+    "avatar_type",
+    "avatar_size",
+    "roles",
+    "is_banned",
+    "banned_at",
+    "provider_ids",
+    "login_history",
+    "visit_history",
+    "created_at",
+    "last_sign_in_at"
+  ].join(",");
+  const SUPABASE_PROFILE_PRESENCE_SELECT = [
+    "profile_id",
+    "status",
+    "is_online",
+    "current_path",
+    "last_seen_at"
+  ].join(",");
+  const SUPABASE_PROFILE_COMMENT_SELECT = [
+    "id",
+    "profile_id",
+    "author_profile_id",
+    "auth_user_id",
+    "firebase_author_uid",
+    "author_name",
+    "author_photo_url",
+    "author_accent_role",
+    "message",
+    "media_url",
+    "media_type",
+    "media_path",
+    "media_size",
+    "created_at",
+    "updated_at"
+  ].join(",");
+
+  const normalizeSupabaseInteger = (value) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return Math.trunc(value);
+    }
+
+    if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
+      const parsedValue = Number(value);
+      return Number.isFinite(parsedValue) ? Math.trunc(parsedValue) : null;
+    }
+
+    return null;
+  };
+
+  const buildSupabaseRestUrl = (table, query = {}) => {
+    const url = new URL(SUPABASE_REST_URL + "/" + table);
+
+    Object.entries(query).forEach(([key, value]) => {
+      if (value === null || value === undefined || value === "") {
+        return;
+      }
+
+      url.searchParams.set(key, String(value));
+    });
+
+    return url.toString();
+  };
+
+  const fetchSupabaseRows = async (table, query = {}) => {
+    if (!SUPABASE_PUBLIC_READS_ENABLED) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(buildSupabaseRestUrl(table, query), {
+        headers: {
+          apikey: SUPABASE_PUBLIC_ANON_KEY,
+          Authorization: "Bearer " + SUPABASE_PUBLIC_ANON_KEY,
+          "Accept-Profile": "public",
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const payload = await response.json();
+      return Array.isArray(payload) ? payload : null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  const mapSupabasePresenceRow = (row) =>
+    row
+      ? {
+          status: row.status === "online" ? "online" : "offline",
+          isOnline: row.is_online === true,
+          currentPath:
+            typeof row.current_path === "string" && row.current_path
+              ? row.current_path
+              : null,
+          lastSeenAt:
+            typeof row.last_seen_at === "string" && row.last_seen_at
+              ? row.last_seen_at
+              : null,
+        }
+      : null;
+
+  const mapSupabaseCommentRowToStoredComment = (row) =>
+    toStoredProfileComment(typeof row?.id === "string" ? row.id : "", {
+      profileId: normalizeSupabaseInteger(row?.profile_id),
+      authorUid:
+        typeof row?.firebase_author_uid === "string" && row.firebase_author_uid
+          ? row.firebase_author_uid
+          : null,
+      authorProfileId: normalizeSupabaseInteger(row?.author_profile_id),
+      authorName:
+        typeof row?.author_name === "string" ? row.author_name : null,
+      authorPhotoURL:
+        typeof row?.author_photo_url === "string" ? row.author_photo_url : null,
+      authorAccentRole:
+        typeof row?.author_accent_role === "string" ? row.author_accent_role : null,
+      message: typeof row?.message === "string" ? row.message : "",
+      mediaURL: typeof row?.media_url === "string" ? row.media_url : null,
+      mediaType: typeof row?.media_type === "string" ? row.media_type : null,
+      mediaPath: typeof row?.media_path === "string" ? row.media_path : null,
+      mediaSize: normalizeSupabaseInteger(row?.media_size),
+      createdAt: typeof row?.created_at === "string" ? row.created_at : null,
+      updatedAt: typeof row?.updated_at === "string" ? row.updated_at : null,
+    });
+
+  const mapSupabaseProfileRowToSnapshot = (row, presenceRow = null) => {
+    const uid =
+      typeof row?.firebase_uid === "string" && row.firebase_uid
+        ? row.firebase_uid
+        : typeof row?.auth_user_id === "string" && row.auth_user_id
+          ? row.auth_user_id
+          : null;
+
+    if (!uid) {
+      return null;
+    }
+
+    return cacheResolvedProfileSnapshot(
+      toStoredUserSnapshot(uid, {
+        email: typeof row?.email === "string" ? row.email : null,
+        emailVerified: row?.email_verified === true,
+        login: typeof row?.login === "string" ? row.login : null,
+        displayName:
+          typeof row?.display_name === "string" ? row.display_name : null,
+        profileId: normalizeSupabaseInteger(row?.profile_id),
+        photoURL:
+          typeof row?.photo_url === "string" && row.photo_url ? row.photo_url : null,
+        avatarPath:
+          typeof row?.avatar_path === "string" && row.avatar_path
+            ? row.avatar_path
+            : null,
+        avatarType:
+          typeof row?.avatar_type === "string" && row.avatar_type
+            ? row.avatar_type
+            : null,
+        avatarSize: normalizeSupabaseInteger(row?.avatar_size),
+        roles: Array.isArray(row?.roles) ? row.roles : [],
+        isBanned: row?.is_banned === true,
+        bannedAt:
+          typeof row?.banned_at === "string" && row.banned_at ? row.banned_at : null,
+        verificationRequired: row?.verification_required === true,
+        providerIds: Array.isArray(row?.provider_ids) ? row.provider_ids : [],
+        creationTime:
+          typeof row?.created_at === "string" && row.created_at ? row.created_at : null,
+        lastSignInTime:
+          typeof row?.last_sign_in_at === "string" && row.last_sign_in_at
+            ? row.last_sign_in_at
+            : null,
+        loginHistory: Array.isArray(row?.login_history) ? row.login_history : [],
+        visitHistory: Array.isArray(row?.visit_history) ? row.visit_history : [],
+        presence: mapSupabasePresenceRow(presenceRow),
+      })
+    );
+  };
+
+  const fetchSupabaseProfileRowsByLoginPrefix = async (loginPrefix) => {
+    const rows = await fetchSupabaseRows("public_profiles", {
+      select: SUPABASE_PROFILE_SELECT,
+      login: "ilike." + loginPrefix + "*",
+      order: "profile_id.asc",
+      limit: 8,
+    });
+
+    return Array.isArray(rows)
+      ? rows
+          .map((row) => mapSupabaseProfileRowToSnapshot(row, null))
+          .filter(Boolean)
+          .filter(
+            (profile, index, profiles) =>
+              typeof profile.login === "string" &&
+              normalizeLogin(profile.login)?.startsWith(loginPrefix) &&
+              index === profiles.findIndex((candidate) => candidate.uid === profile.uid)
+          )
+      : [];
+  };
+
+  const fetchSupabaseProfileByAuthorName = async (authorName) => {
+    const normalizedAuthorName = normalizeProfileCommentAuthorName(authorName);
+
+    if (!normalizedAuthorName) {
+      return null;
+    }
+
+    const profileIdMatch = normalizedAuthorName.match(/^profile\\s*#\\s*(\\d+)$/i);
+
+    if (profileIdMatch) {
+      const byProfileIdRows = await fetchSupabaseRows("public_profiles", {
+        select: SUPABASE_PROFILE_SELECT,
+        profile_id: "eq." + profileIdMatch[1],
+        limit: 1,
+      });
+      const byProfileId = Array.isArray(byProfileIdRows) && byProfileIdRows[0]
+        ? mapSupabaseProfileRowToSnapshot(byProfileIdRows[0], null)
+        : null;
+
+      if (byProfileId) {
+        return byProfileId;
+      }
+    }
+
+    const byLoginRows = await fetchSupabaseRows("public_profiles", {
+      select: SUPABASE_PROFILE_SELECT,
+      login: "ilike." + normalizedAuthorName,
+      limit: 1,
+    });
+    const byLogin =
+      Array.isArray(byLoginRows) && byLoginRows[0]
+        ? mapSupabaseProfileRowToSnapshot(byLoginRows[0], null)
+        : null;
+
+    if (byLogin) {
+      return byLogin;
+    }
+
+    const byDisplayNameRows = await fetchSupabaseRows("public_profiles", {
+      select: SUPABASE_PROFILE_SELECT,
+      display_name: "ilike." + normalizedAuthorName,
+      limit: 1,
+    });
+
+    return Array.isArray(byDisplayNameRows) && byDisplayNameRows[0]
+      ? mapSupabaseProfileRowToSnapshot(byDisplayNameRows[0], null)
+      : null;
+  };
+
+  const fetchSupabaseProfileById = async (profileId) => {
+    const profileRows = await fetchSupabaseRows("public_profiles", {
+      select: SUPABASE_PROFILE_SELECT,
+      profile_id: "eq." + profileId,
+      limit: 1,
+    });
+
+    if (!Array.isArray(profileRows) || !profileRows[0]) {
+      return null;
+    }
+
+    const presenceRows = await fetchSupabaseRows("public_profile_presence", {
+      select: SUPABASE_PROFILE_PRESENCE_SELECT,
+      profile_id: "eq." + profileId,
+      limit: 1,
+    });
+
+    return mapSupabaseProfileRowToSnapshot(
+      profileRows[0],
+      Array.isArray(presenceRows) ? presenceRows[0] ?? null : null
+    );
+  };
+
+  const fetchSupabaseCommentsByProfileId = async (profileId) => {
+    const rows = await fetchSupabaseRows("public_profile_comments", {
+      select: SUPABASE_PROFILE_COMMENT_SELECT,
+      profile_id: "eq." + profileId,
+      order: "created_at.desc",
+      limit: 200,
+    });
+
+    if (!Array.isArray(rows)) {
+      return null;
+    }
+
+    const comments = sortProfileComments(
+      rows
+        .map((row) => mapSupabaseCommentRowToStoredComment(row))
+        .filter(
+          (comment) =>
+            comment &&
+            comment.profileId === profileId &&
+            (
+              (typeof comment.message === "string" && comment.message) ||
+              (typeof comment.mediaURL === "string" && comment.mediaURL)
+            )
+        )
+    );
+
+    return enrichProfileCommentsWithAuthors(comments);
+  };
+
   window.firebaseConfig = firebaseConfig;
   window.sakuraAuthStateSettled = false;
 
@@ -2465,6 +2784,12 @@
         PROFILE_RUNTIME_CACHE_TTL_MS,
         "profile-by-id:" + profileId,
         async () => {
+          const supabaseProfile = await fetchSupabaseProfileById(profileId);
+
+          if (supabaseProfile) {
+            return supabaseProfile;
+          }
+
           const readProfileDoc = async () =>
             withTimeout(
               findUserByProfileId(profileId),
@@ -2558,6 +2883,12 @@
         PROFILE_RUNTIME_CACHE_TTL_MS,
         "profile-by-author:" + normalizedAuthorName,
         async () => {
+          const supabaseProfile = await fetchSupabaseProfileByAuthorName(normalizedAuthorName);
+
+          if (supabaseProfile) {
+            return supabaseProfile;
+          }
+
           const readProfileDoc = async () =>
             withTimeout(
               findUserByAuthorName(normalizedAuthorName),
@@ -2641,24 +2972,43 @@
         PROFILE_SEARCH_RUNTIME_CACHE_TTL_MS,
         "profiles-by-prefix:" + normalizedPrefix,
         async () => {
-          const snapshot = await withTimeout(
-            findUsersByLoginPrefix(normalizedPrefix),
-            PROFILE_LOOKUP_TIMEOUT_MS,
-            () =>
-              createFirebaseError(
-                "profile/load-timeout",
-                "Profile search took too long. Refresh the page and try again."
-              )
-          );
+          const supabaseProfiles = await fetchSupabaseProfileRowsByLoginPrefix(normalizedPrefix);
 
-          return snapshot
-            .map((profileDoc) => cacheResolvedProfileSnapshot(toStoredUserSnapshot(profileDoc.id, profileDoc.data())))
-            .filter(
-              (profile, index, profiles) =>
-                typeof profile.login === "string" &&
-                normalizeLogin(profile.login)?.startsWith(normalizedPrefix) &&
-                index === profiles.findIndex((candidate) => candidate.uid === profile.uid)
+          try {
+            const snapshot = await withTimeout(
+              findUsersByLoginPrefix(normalizedPrefix),
+              PROFILE_LOOKUP_TIMEOUT_MS,
+              () =>
+                createFirebaseError(
+                  "profile/load-timeout",
+                  "Profile search took too long. Refresh the page and try again."
+                )
             );
+
+            const firebaseProfiles = snapshot
+              .map((profileDoc) => cacheResolvedProfileSnapshot(toStoredUserSnapshot(profileDoc.id, profileDoc.data())))
+              .filter(Boolean)
+              .filter(
+                (profile, index, profiles) =>
+                  typeof profile.login === "string" &&
+                  normalizeLogin(profile.login)?.startsWith(normalizedPrefix) &&
+                  index === profiles.findIndex((candidate) => candidate.uid === profile.uid)
+              );
+
+            return [...supabaseProfiles, ...firebaseProfiles]
+              .filter(Boolean)
+              .filter(
+                (profile, index, profiles) =>
+                  index === profiles.findIndex((candidate) => candidate.uid === profile.uid)
+              )
+              .slice(0, 8);
+          } catch (error) {
+            if (supabaseProfiles.length) {
+              return supabaseProfiles.slice(0, 8);
+            }
+
+            throw error;
+          }
         }
       );
     };
@@ -2697,6 +3047,12 @@
         }
       }
 
+      const supabaseComments = await fetchSupabaseCommentsByProfileId(profileId);
+
+      if (supabaseComments) {
+        return supabaseComments;
+      }
+
       await waitForAuthStateSettlement();
 
       if (auth.currentUser && !auth.currentUser.isAnonymous) {
@@ -2719,6 +3075,12 @@
         return await readComments();
       } catch (error) {
         if (isPermissionDeniedError(error)) {
+          const fallbackSupabaseComments = await fetchSupabaseCommentsByProfileId(profileId);
+
+          if (fallbackSupabaseComments) {
+            return fallbackSupabaseComments;
+          }
+
           throw createFirebaseError(
             "comments/read-denied",
             "Profile comments are blocked by Firestore rules. Allow read access to profileComments."

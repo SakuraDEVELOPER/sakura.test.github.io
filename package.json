@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "migrate:profiles:supabase": "node scripts/migrate-firebase-profiles-to-supabase.mjs",
+    "migrate:comments:supabase": "node scripts/migrate-firebase-comments-to-supabase.mjs",
+    "migrate:presence:supabase": "node scripts/migrate-firebase-presence-to-supabase.mjs",
+    "migrate:all:supabase": "node scripts/migrate-firebase-all-to-supabase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.100.1",
