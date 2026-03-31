@@ -100,19 +100,33 @@ const normalizePassword = (value: unknown) =>
 
 const parseFirebaseServiceAccount = () => {
   if (firebaseServiceAccountJson) {
-    const parsed = JSON.parse(firebaseServiceAccountJson) as Record<string, unknown>;
+    try {
+      const parsed = JSON.parse(firebaseServiceAccountJson) as Record<string, unknown>;
 
-    return {
-      projectId:
-        normalizeString(parsed.project_id, 200) ??
-        normalizeString(parsed.projectId, 200),
-      clientEmail:
-        normalizeString(parsed.client_email, 320) ??
-        normalizeString(parsed.clientEmail, 320),
-      privateKey:
-        normalizeString(parsed.private_key, 8192) ??
-        normalizeString(parsed.privateKey, 8192),
-    };
+      return {
+        projectId:
+          normalizeString(parsed.project_id, 200) ??
+          normalizeString(parsed.projectId, 200),
+        clientEmail:
+          normalizeString(parsed.client_email, 320) ??
+          normalizeString(parsed.clientEmail, 320),
+        privateKey:
+          normalizeString(parsed.private_key, 8192) ??
+          normalizeString(parsed.privateKey, 8192),
+      };
+    } catch (_error) {
+      if (firebaseServiceAccountEmail && firebaseServiceAccountPrivateKey) {
+        return {
+          projectId: null,
+          clientEmail: normalizeString(firebaseServiceAccountEmail, 320),
+          privateKey: normalizeString(firebaseServiceAccountPrivateKey, 8192),
+        };
+      }
+
+      throw new Error(
+        "FIREBASE_SERVICE_ACCOUNT_JSON is invalid JSON. Re-save the secret as the full raw service account object, or set FIREBASE_SERVICE_ACCOUNT_EMAIL and FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY instead.",
+      );
+    }
   }
 
   return {
@@ -127,7 +141,7 @@ const getFirebaseAdminApp = () => {
 
   if (!serviceAccount.clientEmail || !serviceAccount.privateKey) {
     throw new Error(
-      "Firebase admin service account is required for account deletion. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_EMAIL and FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY.",
+      "Firebase admin service account is required for Firebase compatibility sync. Set FIREBASE_SERVICE_ACCOUNT_JSON or FIREBASE_SERVICE_ACCOUNT_EMAIL and FIREBASE_SERVICE_ACCOUNT_PRIVATE_KEY.",
     );
   }
 
@@ -380,20 +394,25 @@ const syncFirebaseVerificationCompatibility = async (
     });
   } catch (error) {
     if (!isMissingAuthUserError(error)) {
-      throw error;
+      console.error("Firebase auth compatibility sync failed:", error);
+      return;
     }
   }
 
-  await getFirebaseAdminFirestore().collection("users").doc(profile.firebaseUid).set(
-    {
-      email: profile.email,
-      emailVerified: isVerified,
-      verificationRequired: !isVerified,
-      verificationEmailSent: false,
-      updatedAt: nowIso(),
-    },
-    { merge: true },
-  );
+  try {
+    await getFirebaseAdminFirestore().collection("users").doc(profile.firebaseUid).set(
+      {
+        email: profile.email,
+        emailVerified: isVerified,
+        verificationRequired: !isVerified,
+        verificationEmailSent: false,
+        updatedAt: nowIso(),
+      },
+      { merge: true },
+    );
+  } catch (error) {
+    console.error("Firebase Firestore compatibility sync failed:", error);
+  }
 };
 
 const handleAdminSetProfileEmailVerification = async (
