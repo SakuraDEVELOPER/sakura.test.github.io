@@ -45,19 +45,11 @@
           serverTimestamp,
           setDoc,
           where
-        },
-        {
-          deleteObject,
-          getDownloadURL,
-          getStorage,
-          ref: storageRef,
-          uploadBytes
         }
       ] = await Promise.all([
         import("https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js"),
         import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"),
-        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"),
-        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js")
+        import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js")
       ]);
 
       const firebaseConfig = {
@@ -1266,12 +1258,32 @@
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app);
     const provider = new GoogleAuthProvider();
+    let storageModulePromise = null;
+
+    const ensureStorageSdk = async () => {
+      if (!storageModulePromise) {
+        storageModulePromise = import("https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js").then(
+          ({
+            deleteObject,
+            getDownloadURL,
+            getStorage,
+            ref: storageRef,
+            uploadBytes,
+          }) => ({
+            deleteObject,
+            getDownloadURL,
+            storage: getStorage(app),
+            storageRef,
+            uploadBytes,
+          })
+        );
+      }
+
+      return storageModulePromise;
+    };
 
     const userRefFor = (uid) => doc(db, "users", uid);
-    const avatarStorageRefFor = (uid, extension) =>
-      storageRef(storage, \`avatars/\${uid}/avatar.\${extension}\`);
     const countersRef = doc(db, "meta", "counters");
     const usersCollection = collection(db, "users");
     const profileCommentsCollection = collection(db, "profileComments");
@@ -1761,7 +1773,8 @@
         return null;
       }
 
-      const avatarRef = avatarStorageRefFor(uid, extension);
+      const { getDownloadURL, storage, storageRef, uploadBytes } = await ensureStorageSdk();
+      const avatarRef = storageRef(storage, \`avatars/\${uid}/avatar.\${extension}\`);
 
       await uploadBytes(avatarRef, file, {
         contentType: file.type,
@@ -1804,11 +1817,12 @@
     };
     const deleteAvatarFromStorage = async (uid) => {
       const extensions = ["gif", "webp", "mp4", "webm"];
+      const { deleteObject, storage, storageRef } = await ensureStorageSdk();
 
       await Promise.all(
         extensions.map(async (extension) => {
           try {
-            await deleteObject(avatarStorageRefFor(uid, extension));
+            await deleteObject(storageRef(storage, \`avatars/\${uid}/avatar.\${extension}\`));
           } catch (error) {
             const errorCode = getErrorCode(error);
 
