@@ -111,7 +111,6 @@
   const profileByIdRuntimeCache = new Map();
   const profileByAuthorRuntimeCache = new Map();
   const profilesByPrefixRuntimeCache = new Map();
-  const siteOnlineUsersRuntimeCache = new Map();
   const runtimePendingLookupCache = new Map();
 
   const createFirebaseError = (code, message) => {
@@ -1288,108 +1287,69 @@
     const usersCollection = collection(db, "users");
     const profileCommentsCollection = collection(db, "profileComments");
     let stopPresenceTracking = () => {};
-    let lastPresenceSignature = "";
-    let lastPresenceAt = 0;
+    let presenceRuntimePromise = null;
     let authStateHasSettled = false;
-    const currentPresenceTabId =
-      "presence-tab-" + Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
-
-    const readPresenceTabRegistry = () => {
-      try {
-        const rawValue = window.localStorage?.getItem(PRESENCE_TAB_REGISTRY_STORAGE_KEY);
-
-        if (!rawValue) {
-          return {};
-        }
-
-        const parsedValue = JSON.parse(rawValue);
-
-        return parsedValue && typeof parsedValue === "object" ? parsedValue : {};
-      } catch (error) {
-        return {};
-      }
-    };
-
-    const writePresenceTabRegistry = (registry) => {
-      try {
-        window.localStorage?.setItem(
-          PRESENCE_TAB_REGISTRY_STORAGE_KEY,
-          JSON.stringify(registry)
-        );
-      } catch (error) {}
-    };
-
-    const prunePresenceTabRegistry = (registry) => {
-      const now = Date.now();
-      const nextRegistry = {};
-
-      Object.entries(registry || {}).forEach(([key, value]) => {
-        if (!value || typeof value !== "object") {
-          return;
-        }
-
-        const timestamp =
-          typeof value.timestamp === "number" && Number.isFinite(value.timestamp)
-            ? value.timestamp
-            : Number.NaN;
-
-        if (!Number.isFinite(timestamp) || now - timestamp > PRESENCE_TAB_REGISTRY_MAX_AGE_MS) {
-          return;
-        }
-
-        nextRegistry[key] = {
-          uid: typeof value.uid === "string" && value.uid ? value.uid : null,
-          visible: value.visible !== false,
-          path: typeof value.path === "string" && value.path ? value.path : null,
-          timestamp,
-        };
-      });
-
-      return nextRegistry;
-    };
-
-    const updatePresenceTabRegistry = (uid, visible, path) => {
-      const nextRegistry = prunePresenceTabRegistry(readPresenceTabRegistry());
-
-      nextRegistry[currentPresenceTabId] = {
-        uid: typeof uid === "string" && uid ? uid : null,
-        visible: visible !== false,
-        path: typeof path === "string" && path ? path : null,
-        timestamp: Date.now(),
-      };
-
-      writePresenceTabRegistry(nextRegistry);
-      return nextRegistry;
-    };
-
-    const clearPresenceTabRegistryEntry = () => {
-      const nextRegistry = prunePresenceTabRegistry(readPresenceTabRegistry());
-
-      if (currentPresenceTabId in nextRegistry) {
-        delete nextRegistry[currentPresenceTabId];
-        writePresenceTabRegistry(nextRegistry);
-      }
-    };
-
-    const hasFreshVisiblePresenceTabForUid = (uid) => {
-      if (typeof uid !== "string" || !uid) {
-        return false;
-      }
-
-      const nextRegistry = prunePresenceTabRegistry(readPresenceTabRegistry());
-
-      return Object.values(nextRegistry).some(
-        (entry) =>
-          entry &&
-          typeof entry === "object" &&
-          entry.uid === uid &&
-          entry.visible === true
-      );
-    };
-
     const broadcastPresenceDirty = () => {
-      siteOnlineUsersRuntimeCache.delete("all");
+      presenceRuntimePromise
+        ?.then((presenceRuntime) => {
+          presenceRuntime?.invalidateSiteOnlineUsersCache?.();
+        })
+        .catch(() => {});
       window.dispatchEvent(new CustomEvent(PRESENCE_DIRTY_EVENT));
+    };
+
+    const ensurePresenceRuntime = async () => {
+      if (!presenceRuntimePromise) {
+        presenceRuntimePromise = Promise.resolve()
+          .then(() => {
+            if (typeof window.sakuraLoadFirebasePresenceRuntime !== "function") {
+              throw createFirebaseError(
+                "presence/runtime-loader-missing",
+                "Firebase presence runtime is not available."
+              );
+            }
+
+            return window.sakuraLoadFirebasePresenceRuntime();
+          })
+          .then(({ createFirebasePresenceRuntime }) =>
+            createFirebasePresenceRuntime({
+              auth,
+              db,
+              usersCollection,
+              userRefFor,
+              getDoc,
+              setDoc,
+              getDocs,
+              query,
+              collection,
+              where,
+              createFirebaseError,
+              isPermissionDeniedError,
+              buildFallbackUserDetails,
+              normalizeVisitHistory,
+              buildVisitHistory,
+              toUserSnapshot,
+              toStoredUserSnapshot,
+              normalizePresence,
+              isPresenceFreshOnline,
+              pickCommentAccentRole,
+              publishUserSnapshot,
+              constants: {
+                onlineUsersRuntimeCacheTtlMs: ONLINE_USERS_RUNTIME_CACHE_TTL_MS,
+                presenceHeartbeatIntervalMs: PRESENCE_HEARTBEAT_INTERVAL_MS,
+                presenceVisitRecordCooldownMs: PRESENCE_VISIT_RECORD_COOLDOWN_MS,
+                presenceTabRegistryStorageKey: PRESENCE_TAB_REGISTRY_STORAGE_KEY,
+                presenceTabRegistryMaxAgeMs: PRESENCE_TAB_REGISTRY_MAX_AGE_MS,
+              },
+            })
+          )
+          .catch((error) => {
+            presenceRuntimePromise = null;
+            throw error;
+          });
+      }
+
+      return presenceRuntimePromise;
     };
 
     const markAuthStateSettled = () => {
@@ -1950,88 +1910,8 @@
     };
 
     const syncPresence = async (user, options = {}) => {
-      try {
-        const userRef = userRefFor(user.uid);
-        const userSnapshot = await getDoc(userRef);
-        const existingData = userSnapshot.exists() ? userSnapshot.data() : {};
-        const nowIso = new Date().toISOString();
-        const currentPath =
-          typeof options.path === "string" && options.path
-            ? options.path
-            : window.location.pathname;
-        const forcedVisibility =
-          options.visibility === "hidden"
-            ? false
-            : options.visibility === "visible"
-              ? true
-              : typeof document === "undefined" || document.visibilityState !== "hidden";
-        const isVisible = forcedVisibility;
-        updatePresenceTabRegistry(user.uid, isVisible, currentPath);
-        const resolvedOnline =
-          Boolean(navigator.onLine) && hasFreshVisiblePresenceTabForUid(user.uid);
-        const status = resolvedOnline ? "online" : "offline";
-        const source = typeof options.source === "string" ? options.source : "activity";
-        const signature = status + "|" + currentPath + "|" + source;
-        const previousVisits = normalizeVisitHistory(existingData?.visitHistory);
-        const lastVisit = previousVisits[0] ?? null;
-        const shouldRecordVisit =
-          Boolean(options.forceVisit) ||
-          !lastVisit ||
-          lastVisit.path !== currentPath ||
-          lastVisit.status !== status ||
-          Date.now() - lastPresenceAt > PRESENCE_VISIT_RECORD_COOLDOWN_MS ||
-          lastPresenceSignature !== signature;
-        const presence = {
-          status: resolvedOnline ? "online" : "offline",
-          isOnline: resolvedOnline,
-          currentPath,
-          lastSeenAt: nowIso,
-        };
-        const visitHistory = shouldRecordVisit
-          ? buildVisitHistory(previousVisits, {
-              timestamp: nowIso,
-              path: currentPath,
-              source,
-              status,
-            })
-          : previousVisits;
-
-        lastPresenceSignature = signature;
-        lastPresenceAt = Date.now();
-
-        await setDoc(
-          userRef,
-          {
-            presence,
-            visitHistory,
-            updatedAt: nowIso,
-          },
-          { merge: true }
-        );
-
-        broadcastPresenceDirty();
-        return publishUserSnapshot(toUserSnapshot(user, { ...existingData, visitHistory, presence }));
-      } catch (error) {
-        if (!isPermissionDeniedError(error)) {
-          throw error;
-        }
-
-        const fallbackDetails = window.sakuraCurrentUserSnapshot
-          ? {
-              login: window.sakuraCurrentUserSnapshot.login,
-              displayName: window.sakuraCurrentUserSnapshot.displayName,
-              profileId: window.sakuraCurrentUserSnapshot.profileId,
-              photoURL: window.sakuraCurrentUserSnapshot.photoURL,
-              roles: window.sakuraCurrentUserSnapshot.roles,
-              providerIds: window.sakuraCurrentUserSnapshot.providerIds,
-              loginHistory: window.sakuraCurrentUserSnapshot.loginHistory,
-              visitHistory: window.sakuraCurrentUserSnapshot.visitHistory,
-              presence: window.sakuraCurrentUserSnapshot.presence,
-            }
-          : buildFallbackUserDetails(user, options);
-
-        return publishUserSnapshot(toUserSnapshot(user, fallbackDetails));
-      }
+      const presenceRuntime = await ensurePresenceRuntime();
+      return presenceRuntime.syncPresence(user, options);
     };
 
     const ensureProfileRecord = async (user, options = {}) => {
@@ -2254,72 +2134,10 @@
       }
     };
 
-    const startPresenceTracking = (user) => {
+    const startPresenceTracking = async (user) => {
       stopPresenceTracking();
-
-      const syncCurrentPresence = (source, forceVisit = false, visibility) =>
-        syncPresence(user, {
-          path: window.location.pathname,
-          source,
-          forceVisit,
-          visibility,
-        }).catch((error) => {
-          console.error("Failed to sync presence:", error);
-        });
-
-      const handleOnline = () => {
-        syncCurrentPresence("network-online", true);
-      };
-
-      const handleOffline = () => {
-        syncCurrentPresence("network-offline", true);
-      };
-
-      const handleVisibilityChange = () => {
-        syncCurrentPresence(
-          document.visibilityState === "hidden" ? "tab-hidden" : "tab-visible",
-          true,
-          document.visibilityState === "hidden" ? "hidden" : "visible"
-        );
-      };
-
-      const handlePageShow = () => {
-        syncCurrentPresence("page-show", true, "visible");
-      };
-
-      const handlePageHide = () => {
-        syncCurrentPresence("page-hide", true, "hidden");
-      };
-
-      const handleBeforeUnload = () => {
-        syncCurrentPresence("before-unload", true, "hidden");
-      };
-
-      const intervalId = window.setInterval(() => {
-        syncCurrentPresence("heartbeat");
-      }, PRESENCE_HEARTBEAT_INTERVAL_MS);
-
-      window.addEventListener("online", handleOnline);
-      window.addEventListener("offline", handleOffline);
-      window.addEventListener("visibilitychange", handleVisibilityChange);
-      window.addEventListener("pageshow", handlePageShow);
-      window.addEventListener("pagehide", handlePageHide);
-      window.addEventListener("beforeunload", handleBeforeUnload);
-
-      stopPresenceTracking = () => {
-        window.clearInterval(intervalId);
-        window.removeEventListener("online", handleOnline);
-        window.removeEventListener("offline", handleOffline);
-        window.removeEventListener("visibilitychange", handleVisibilityChange);
-        window.removeEventListener("pageshow", handlePageShow);
-        window.removeEventListener("pagehide", handlePageHide);
-        window.removeEventListener("beforeunload", handleBeforeUnload);
-        clearPresenceTabRegistryEntry();
-        broadcastPresenceDirty();
-      };
-
-      syncCurrentPresence("session-start", true);
-
+      const presenceRuntime = await ensurePresenceRuntime();
+      stopPresenceTracking = presenceRuntime.startPresenceTracking(user);
       return stopPresenceTracking;
     };
 
@@ -3912,151 +3730,14 @@
         verificationEmailSent: false,
       };
     };
-    const compareOnlineUsers = (left, right) => {
-      const leftSeenAt =
-        left?.presence?.lastSeenAt ? Date.parse(left.presence.lastSeenAt) : Number.NaN;
-      const rightSeenAt =
-        right?.presence?.lastSeenAt ? Date.parse(right.presence.lastSeenAt) : Number.NaN;
-
-      if (Number.isFinite(leftSeenAt) && Number.isFinite(rightSeenAt) && leftSeenAt !== rightSeenAt) {
-        return rightSeenAt - leftSeenAt;
-      }
-
-      const leftLabel =
-        (typeof left?.displayName === "string" && left.displayName.trim()) ||
-        (typeof left?.login === "string" && left.login.trim()) ||
-        "";
-      const rightLabel =
-        (typeof right?.displayName === "string" && right.displayName.trim()) ||
-        (typeof right?.login === "string" && right.login.trim()) ||
-        "";
-
-      return leftLabel.localeCompare(rightLabel);
-    };
-    const getFreshOnlineUsers = async () => {
-      try {
-        const usersSnapshot = await getDocs(
-          query(collection(db, "users"), where("presence.status", "==", "online"))
-        );
-        const onlineUsers = [];
-        const countedUserIds = new Set();
-
-        usersSnapshot.forEach((userDoc) => {
-          const details = userDoc.data();
-
-          if (details?.isBanned === true) {
-            return;
-          }
-
-          if (isPresenceFreshOnline(details?.presence)) {
-            countedUserIds.add(userDoc.id);
-            onlineUsers.push(toStoredUserSnapshot(userDoc.id, details));
-          }
-        });
-
-        const currentUser = auth.currentUser;
-        const currentSnapshot = window.sakuraCurrentUserSnapshot;
-        const localCurrentUid =
-          currentUser && !currentUser.isAnonymous
-            ? currentUser.uid
-            : currentSnapshot?.uid ?? null;
-        const localSessionLooksOnline =
-          Boolean(localCurrentUid) &&
-          Boolean(navigator.onLine) &&
-          hasFreshVisiblePresenceTabForUid(localCurrentUid);
-        const localPresenceLooksOnline =
-          isPresenceFreshOnline(currentSnapshot?.presence) || localSessionLooksOnline;
-
-        if (
-          localCurrentUid &&
-          localPresenceLooksOnline &&
-          currentSnapshot?.isBanned !== true &&
-          !countedUserIds.has(localCurrentUid)
-        ) {
-          onlineUsers.push({
-            uid: currentSnapshot?.uid ?? localCurrentUid,
-            isAnonymous: false,
-            email: currentSnapshot?.email ?? null,
-            emailVerified: currentSnapshot?.emailVerified ?? null,
-            login: currentSnapshot?.login ?? null,
-            displayName:
-              typeof currentSnapshot?.displayName === "string"
-                ? currentSnapshot.displayName
-                : typeof currentSnapshot?.login === "string"
-                  ? currentSnapshot.login
-                  : null,
-            profileId:
-              typeof currentSnapshot?.profileId === "number"
-                ? currentSnapshot.profileId
-                : null,
-            photoURL: currentSnapshot?.photoURL ?? null,
-            roles: Array.isArray(currentSnapshot?.roles) ? currentSnapshot.roles : [],
-            isBanned: currentSnapshot?.isBanned === true,
-            bannedAt: currentSnapshot?.bannedAt ?? null,
-            verificationRequired: currentSnapshot?.verificationRequired ?? false,
-            providerIds: Array.isArray(currentSnapshot?.providerIds)
-              ? currentSnapshot.providerIds
-              : [],
-            creationTime: currentSnapshot?.creationTime ?? null,
-            lastSignInTime: currentSnapshot?.lastSignInTime ?? null,
-            loginHistory: Array.isArray(currentSnapshot?.loginHistory)
-              ? currentSnapshot.loginHistory
-              : [],
-            visitHistory: Array.isArray(currentSnapshot?.visitHistory)
-              ? currentSnapshot.visitHistory
-              : [],
-            presence: normalizePresence(
-              currentSnapshot?.presence,
-              window.location.pathname
-            ),
-          });
-        }
-
-        return onlineUsers.sort(compareOnlineUsers);
-      } catch (error) {
-        if (!isPermissionDeniedError(error)) {
-          throw error;
-        }
-
-        throw createFirebaseError(
-          "presence/read-denied",
-          "Online presence could not be loaded. Check Firestore read rules for users."
-        );
-      }
-    };
-    const getCachedSiteOnlineUsers = async () =>
-      runCachedLookup(
-        siteOnlineUsersRuntimeCache,
-        "all",
-        ONLINE_USERS_RUNTIME_CACHE_TTL_MS,
-        "site-online-users:all",
-        async () => {
-          const onlineUsers = await getFreshOnlineUsers();
-
-          return onlineUsers.map((snapshot) => ({
-            uid: snapshot?.uid ?? null,
-            profileId: typeof snapshot?.profileId === "number" ? snapshot.profileId : null,
-            displayName:
-              typeof snapshot?.displayName === "string" ? snapshot.displayName : null,
-            login: typeof snapshot?.login === "string" ? snapshot.login : null,
-            photoURL: typeof snapshot?.photoURL === "string" ? snapshot.photoURL : null,
-            accentRole: pickCommentAccentRole(snapshot?.roles ?? []) ?? null,
-            presence: snapshot?.presence
-              ? {
-                  lastSeenAt:
-                    typeof snapshot.presence.lastSeenAt === "string"
-                      ? snapshot.presence.lastSeenAt
-                      : null,
-                }
-              : null,
-          }));
-        }
-      );
     const getSiteOnlineCount = async () => {
-      const onlineUsers = await getCachedSiteOnlineUsers();
-      return onlineUsers.length;
+      const presenceRuntime = await ensurePresenceRuntime();
+      return presenceRuntime.getSiteOnlineCount();
     };
-    const getSiteOnlineUsers = async () => getCachedSiteOnlineUsers();
+    const getSiteOnlineUsers = async () => {
+      const presenceRuntime = await ensurePresenceRuntime();
+      return presenceRuntime.getSiteOnlineUsers();
+    };
 
     const redirectResultPromise = getRedirectResult(auth).catch((error) => {
       if (getErrorCode(error) !== "auth/no-auth-event") {

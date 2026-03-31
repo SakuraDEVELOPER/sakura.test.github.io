@@ -6,6 +6,7 @@ type FirebaseBootWindow = Window & {
   sakuraStartFirebaseAuth?: () => Promise<unknown> | unknown;
   sakuraFirebaseRuntimeInjected?: boolean;
   sakuraFirebaseRuntimePromise?: Promise<void> | null;
+  sakuraLoadFirebasePresenceRuntime?: () => Promise<unknown>;
 };
 
 const getWindowState = () => window as FirebaseBootWindow;
@@ -108,6 +109,10 @@ export default function FirebaseAuthBoot() {
     };
 
     const loadRuntime = async () => {
+      if (!runtime.sakuraLoadFirebasePresenceRuntime) {
+        runtime.sakuraLoadFirebasePresenceRuntime = () => import("./firebase-auth-presence-runtime");
+      }
+
       if (!runtime.sakuraFirebaseRuntimeInjected && !runtime.sakuraFirebaseRuntimePromise) {
         runtime.sakuraFirebaseRuntimePromise = import("./firebase-auth-script")
           .then(async ({ default: firebaseModuleScript }) => {
