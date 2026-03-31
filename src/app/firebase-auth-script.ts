@@ -92,6 +92,8 @@
   const PROFILE_COMMENT_MEDIA_EXPORT_QUALITY_STEP = 0.08;
   const PROFILE_COMMENT_MEDIA_MAX_DATA_URL_LENGTH = 760000;
   const PROFILE_LOOKUP_TIMEOUT_MS = 5000;
+  const SUPABASE_SYNC_REQUEST_TIMEOUT_MS = 12000;
+  const AUTH_SIGN_OUT_TIMEOUT_MS = 4000;
   const PROFILE_RUNTIME_CACHE_TTL_MS = 2 * 60 * 1000;
   const PROFILE_SEARCH_RUNTIME_CACHE_TTL_MS = 45 * 1000;
   const ONLINE_USERS_RUNTIME_CACHE_TTL_MS = 8 * 1000;
@@ -1593,17 +1595,25 @@
       );
     }
 
-    const response = await fetch(SUPABASE_SYNC_FUNCTION_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + idToken,
-      },
-      body: JSON.stringify({
-        action,
-        ...payload,
+    const response = await withTimeout(
+      fetch(SUPABASE_SYNC_FUNCTION_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + idToken,
+        },
+        body: JSON.stringify({
+          action,
+          ...payload,
+        }),
       }),
-    });
+      SUPABASE_SYNC_REQUEST_TIMEOUT_MS,
+      () =>
+        createFirebaseError(
+          "supabase-sync/timeout",
+          "Supabase live sync request timed out. Try again."
+        )
+    );
 
     const responseBody = await response.json().catch(() => null);
 
@@ -2184,11 +2194,27 @@
 
       try {
         if (!window.sakuraSupabaseAuth && typeof window.sakuraStartSupabaseAuth === "function") {
-          await window.sakuraStartSupabaseAuth();
+          await withTimeout(
+            Promise.resolve(window.sakuraStartSupabaseAuth()),
+            AUTH_SIGN_OUT_TIMEOUT_MS,
+            () =>
+              createFirebaseError(
+                "auth/signout-timeout",
+                "Supabase Auth startup timed out during sign out."
+              )
+          );
         }
 
         if (window.sakuraSupabaseAuth?.logout) {
-          await window.sakuraSupabaseAuth.logout();
+          await withTimeout(
+            Promise.resolve(window.sakuraSupabaseAuth.logout()),
+            AUTH_SIGN_OUT_TIMEOUT_MS,
+            () =>
+              createFirebaseError(
+                "auth/signout-timeout",
+                "Supabase sign out timed out."
+              )
+          );
           clearStoredSupabaseProviderArtifacts();
           clearSupabaseBridgeRuntimeState();
           return;
@@ -2837,12 +2863,28 @@
       clearProfileLookupCaches();
 
       try {
-        await signOutSupabaseBridge();
+        await withTimeout(
+          signOutSupabaseBridge(),
+          AUTH_SIGN_OUT_TIMEOUT_MS,
+          () =>
+            createFirebaseError(
+              "auth/signout-timeout",
+              "Supabase sign out timed out."
+            )
+        );
       } catch (error) {
       }
 
       try {
-        await signOut(auth);
+        await withTimeout(
+          signOut(auth),
+          AUTH_SIGN_OUT_TIMEOUT_MS,
+          () =>
+            createFirebaseError(
+              "auth/signout-timeout",
+              "Firebase sign out timed out."
+            )
+        );
       } catch (error) {
       }
 
