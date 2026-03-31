@@ -3711,7 +3711,7 @@
 
     const syncPresence = async (user, options = {}) => {
       const presenceRuntime = await ensurePresenceRuntime();
-      return presenceRuntime.syncPresence(user, options);
+      return presenceRuntime.syncPresence(user ?? null, options);
     };
 
     const ensureProfileRecord = async (user, options = {}) => {
@@ -6445,22 +6445,7 @@
       },
       syncPresence: async (options = {}) => {
         const user = auth.currentUser;
-
-        if (!user || user.isAnonymous) {
-          const fallbackSnapshot = await resolveSupabaseSessionSnapshotFallback();
-
-          if (fallbackSnapshot) {
-            return fallbackSnapshot;
-          }
-
-          if (user?.isAnonymous) {
-            return publishUserSnapshot(toAnonymousViewerSnapshot(user));
-          }
-
-          return window.sakuraCurrentUserSnapshot ?? null;
-        }
-
-        return syncPresence(user, options);
+        return syncPresence(user ?? null, options);
       },
       deleteAccount: async () => deleteCurrentAccount(),
       logout: async () => {
@@ -6480,6 +6465,7 @@
 
               if (fallbackSnapshot) {
                 callback(fallbackSnapshot);
+                startPresenceTracking(null);
                 return;
               }
 
@@ -6508,6 +6494,7 @@
 
               if (fallbackSnapshot) {
                 callback(fallbackSnapshot);
+                startPresenceTracking(null);
                 return;
               }
 

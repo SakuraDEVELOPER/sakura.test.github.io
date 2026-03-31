@@ -132,6 +132,7 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
     return url.toString();
   };
+  const buildSupabaseRpcUrl = (functionName: string) => supabaseRestUrl + "/rpc/" + functionName;
 
   const fetchSupabaseRows = async (table: string, query: Record<string, unknown> = {}) => {
     if (!supabaseReadsEnabled) {
@@ -154,6 +155,67 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
       const payload = await response.json();
       return Array.isArray(payload) ? payload : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const getSupabaseBridgeAccessToken = async () => {
+    try {
+      const runtimeWindow = window as any;
+
+      if (!runtimeWindow.sakuraSupabaseAuth && typeof runtimeWindow.sakuraStartSupabaseAuth === "function") {
+        await runtimeWindow.sakuraStartSupabaseAuth();
+      }
+
+      if (
+        typeof runtimeWindow.sakuraSupabaseCurrentSession?.access_token === "string" &&
+        runtimeWindow.sakuraSupabaseCurrentSession.access_token
+      ) {
+        return runtimeWindow.sakuraSupabaseCurrentSession.access_token;
+      }
+
+      if (runtimeWindow.sakuraSupabaseAuth?.getSession) {
+        const session = await runtimeWindow.sakuraSupabaseAuth.getSession();
+        return typeof session?.access_token === "string" && session.access_token
+          ? session.access_token
+          : null;
+      }
+    } catch {}
+
+    return null;
+  };
+
+  const callSupabasePresenceRpc = async (functionName: string, payload: Record<string, unknown>) => {
+    if (!supabaseReadsEnabled) {
+      return null;
+    }
+
+    const accessToken = await getSupabaseBridgeAccessToken();
+
+    if (!accessToken) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(buildSupabaseRpcUrl(functionName), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: "Bearer " + accessToken,
+          "Accept-Profile": "public",
+          "Content-Profile": "public",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json().catch(() => null);
     } catch {
       return null;
     }
@@ -379,6 +441,82 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   };
 
   const getFreshOnlineUsers = async () => {
+    if (supabaseReadsEnabled) {
+      const presenceRows = await fetchSupabaseRows("public_profile_presence", {
+        select: "profile_id,last_seen_at",
+        status: "eq.online",
+        is_online: "eq.true",
+        order: "last_seen_at.desc",
+        limit: 100,
+      });
+
+      if (Array.isArray(presenceRows) && presenceRows.length) {
+        const profileIds = presenceRows
+          .map((row) => normalizeSupabaseInteger((row as any)?.profile_id))
+          .filter((profileId): profileId is number => typeof profileId === "number" && profileId > 0);
+
+        if (profileIds.length) {
+          const profileRows = await fetchSupabaseRows("public_profiles", {
+            select: "profile_id,firebase_uid,display_name,login,photo_url,roles,is_banned",
+            profile_id: `in.(${profileIds.join(",")})`,
+          });
+
+          if (Array.isArray(profileRows)) {
+            const profileById = new Map<number, any>();
+
+            profileRows.forEach((row) => {
+              const profileId = normalizeSupabaseInteger((row as any)?.profile_id);
+
+              if (typeof profileId === "number" && profileId > 0) {
+                profileById.set(profileId, row);
+              }
+            });
+
+            return presenceRows
+              .map((presenceRow) => {
+                const profileId = normalizeSupabaseInteger((presenceRow as any)?.profile_id);
+
+                if (typeof profileId !== "number" || profileId <= 0) {
+                  return null;
+                }
+
+                const profileRow = profileById.get(profileId);
+
+                if (!profileRow || profileRow.is_banned === true) {
+                  return null;
+                }
+
+                return {
+                  uid:
+                    typeof profileRow.firebase_uid === "string" ? profileRow.firebase_uid : null,
+                  profileId,
+                  displayName:
+                    typeof profileRow.display_name === "string"
+                      ? profileRow.display_name
+                      : null,
+                  login:
+                    typeof profileRow.login === "string" ? profileRow.login : null,
+                  photoURL:
+                    typeof profileRow.photo_url === "string"
+                      ? profileRow.photo_url
+                      : null,
+                  accentRole: pickCommentAccentRole(
+                    Array.isArray(profileRow.roles) ? profileRow.roles : []
+                  ) ?? null,
+                  presence: {
+                    lastSeenAt:
+                      typeof (presenceRow as any)?.last_seen_at === "string"
+                        ? (presenceRow as any).last_seen_at
+                        : null,
+                  },
+                };
+              })
+              .filter(Boolean) as any[];
+          }
+        }
+      }
+    }
+
     try {
       const usersSnapshot = await getDocs(
         query(collection(db, "users"), where("presence.status", "==", "online"))
@@ -460,80 +598,6 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         throw error;
       }
 
-      const presenceRows = await fetchSupabaseRows("public_profile_presence", {
-        select: "profile_id,last_seen_at",
-        status: "eq.online",
-        is_online: "eq.true",
-        order: "last_seen_at.desc",
-        limit: 100,
-      });
-
-      if (Array.isArray(presenceRows) && presenceRows.length) {
-        const profileIds = presenceRows
-          .map((row) => normalizeSupabaseInteger((row as any)?.profile_id))
-          .filter((profileId): profileId is number => typeof profileId === "number" && profileId > 0);
-
-        if (profileIds.length) {
-          const profileRows = await fetchSupabaseRows("public_profiles", {
-            select: "profile_id,firebase_uid,display_name,login,photo_url,roles,is_banned",
-            profile_id: `in.(${profileIds.join(",")})`,
-          });
-
-          if (Array.isArray(profileRows)) {
-            const profileById = new Map<number, any>();
-
-            profileRows.forEach((row) => {
-              const profileId = normalizeSupabaseInteger((row as any)?.profile_id);
-
-              if (typeof profileId === "number" && profileId > 0) {
-                profileById.set(profileId, row);
-              }
-            });
-
-            return presenceRows
-              .map((presenceRow) => {
-                const profileId = normalizeSupabaseInteger((presenceRow as any)?.profile_id);
-
-                if (typeof profileId !== "number" || profileId <= 0) {
-                  return null;
-                }
-
-                const profileRow = profileById.get(profileId);
-
-                if (!profileRow || profileRow.is_banned === true) {
-                  return null;
-                }
-
-                return {
-                  uid:
-                    typeof profileRow.firebase_uid === "string" ? profileRow.firebase_uid : null,
-                  profileId,
-                  displayName:
-                    typeof profileRow.display_name === "string"
-                      ? profileRow.display_name
-                      : null,
-                  login:
-                    typeof profileRow.login === "string" ? profileRow.login : null,
-                  photoURL:
-                    typeof profileRow.photo_url === "string"
-                      ? profileRow.photo_url
-                      : null,
-                  accentRole: pickCommentAccentRole(
-                    Array.isArray(profileRow.roles) ? profileRow.roles : []
-                  ) ?? null,
-                  presence: {
-                    lastSeenAt:
-                      typeof (presenceRow as any)?.last_seen_at === "string"
-                        ? (presenceRow as any).last_seen_at
-                        : null,
-                  },
-                };
-              })
-              .filter(Boolean) as any[];
-          }
-        }
-      }
-
       throw createFirebaseError(
         "presence/read-denied",
         "Online presence could not be loaded. Check Firestore read rules for users."
@@ -551,7 +615,10 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         displayName: typeof snapshot?.displayName === "string" ? snapshot.displayName : null,
         login: typeof snapshot?.login === "string" ? snapshot.login : null,
         photoURL: typeof snapshot?.photoURL === "string" ? snapshot.photoURL : null,
-        accentRole: pickCommentAccentRole(snapshot?.roles ?? []) ?? null,
+        accentRole:
+          (typeof snapshot?.accentRole === "string" && snapshot.accentRole) ||
+          pickCommentAccentRole(snapshot?.roles ?? []) ||
+          null,
         presence: snapshot?.presence
           ? {
               lastSeenAt:
@@ -565,9 +632,13 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
   const syncPresence = async (user: any, options: Record<string, any> = {}) => {
     try {
-      const userRef = userRefFor(user.uid);
-      const userSnapshot = await getDoc(userRef);
-      const existingData = userSnapshot.exists() ? userSnapshot.data() : {};
+      const currentSnapshot = (window as any).sakuraCurrentUserSnapshot;
+      const effectiveUid =
+        user && !user.isAnonymous
+          ? user.uid
+          : typeof currentSnapshot?.uid === "string" && currentSnapshot.uid
+            ? currentSnapshot.uid
+            : null;
       const nowIso = new Date().toISOString();
       const currentPath =
         typeof options.path === "string" && options.path
@@ -581,14 +652,14 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
             : typeof document === "undefined" || document.visibilityState !== "hidden";
       const isVisible = forcedVisibility;
 
-      updatePresenceTabRegistry(user.uid, isVisible, currentPath);
+      updatePresenceTabRegistry(effectiveUid, isVisible, currentPath);
 
       const resolvedOnline =
-        Boolean(navigator.onLine) && hasFreshVisiblePresenceTabForUid(user.uid);
+        Boolean(navigator.onLine) && hasFreshVisiblePresenceTabForUid(effectiveUid);
       const status = resolvedOnline ? "online" : "offline";
       const source = typeof options.source === "string" ? options.source : "activity";
       const signature = status + "|" + currentPath + "|" + source;
-      const previousVisits = normalizeVisitHistory(existingData?.visitHistory);
+      const previousVisits = normalizeVisitHistory(currentSnapshot?.visitHistory);
       const lastVisit = previousVisits[0] ?? null;
       const shouldRecordVisit =
         Boolean(options.forceVisit) ||
@@ -615,6 +686,69 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       lastPresenceSignature = signature;
       lastPresenceAt = Date.now();
 
+      const supabaseResponse = await callSupabasePresenceRpc(
+        "sync_current_profile_presence_rpc",
+        {
+          target_status: presence.status,
+          target_is_online: presence.isOnline,
+          target_current_path: presence.currentPath,
+          target_last_seen_at: presence.lastSeenAt,
+          target_source: source,
+          target_force_visit: Boolean(options.forceVisit),
+        }
+      );
+
+      if (supabaseResponse) {
+        const responsePresence =
+          supabaseResponse.presence && typeof supabaseResponse.presence === "object"
+            ? normalizePresence(supabaseResponse.presence, currentPath)
+            : presence;
+        const responseVisitHistory = normalizeVisitHistory(supabaseResponse.visitHistory);
+        const nextSnapshotDetails = {
+          ...(currentSnapshot ?? {}),
+          visitHistory: responseVisitHistory.length ? responseVisitHistory : visitHistory,
+          presence: responsePresence,
+        };
+        const fallbackUid =
+          typeof supabaseResponse.firebaseUid === "string" && supabaseResponse.firebaseUid
+            ? supabaseResponse.firebaseUid
+            : typeof supabaseResponse.authUserId === "string" && supabaseResponse.authUserId
+              ? supabaseResponse.authUserId
+              : effectiveUid;
+
+        invalidateSiteOnlineUsersCache();
+        window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+
+        if (user && !user.isAnonymous) {
+          return publishUserSnapshot(toUserSnapshot(user, nextSnapshotDetails));
+        }
+
+        if (typeof fallbackUid === "string" && fallbackUid) {
+          return publishUserSnapshot(toStoredUserSnapshot(fallbackUid, nextSnapshotDetails));
+        }
+      }
+
+      if (!user || user.isAnonymous) {
+        invalidateSiteOnlineUsersCache();
+        window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+
+        if (effectiveUid) {
+          return publishUserSnapshot(
+            toStoredUserSnapshot(effectiveUid, {
+              ...(currentSnapshot ?? {}),
+              visitHistory,
+              presence,
+            })
+          );
+        }
+
+        return (window as any).sakuraCurrentUserSnapshot ?? null;
+      }
+
+      const userRef = userRefFor(user.uid);
+      const userSnapshot = await getDoc(userRef);
+      const existingData = userSnapshot.exists() ? userSnapshot.data() : {};
+
       await setDoc(
         userRef,
         {
@@ -625,7 +759,6 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         { merge: true }
       );
 
-      const currentSnapshot = (window as any).sakuraCurrentUserSnapshot;
       const profileId =
         typeof existingData?.profileId === "number"
           ? existingData.profileId
@@ -650,6 +783,11 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       }
 
       const currentSnapshot = (window as any).sakuraCurrentUserSnapshot;
+
+      if ((!user || user.isAnonymous) && !currentSnapshot) {
+        return null;
+      }
+
       const fallbackDetails = currentSnapshot
         ? {
             login: currentSnapshot.login,
@@ -664,7 +802,20 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
           }
         : buildFallbackUserDetails(user, options);
 
-      return publishUserSnapshot(toUserSnapshot(user, fallbackDetails));
+      if (user && !user.isAnonymous) {
+        return publishUserSnapshot(toUserSnapshot(user, fallbackDetails));
+      }
+
+      const fallbackUid =
+        typeof currentSnapshot?.uid === "string" && currentSnapshot.uid
+          ? currentSnapshot.uid
+          : null;
+
+      if (fallbackUid) {
+        return publishUserSnapshot(toStoredUserSnapshot(fallbackUid, fallbackDetails));
+      }
+
+      return null;
     }
   };
 
