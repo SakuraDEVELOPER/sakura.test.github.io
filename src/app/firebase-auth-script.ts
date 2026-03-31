@@ -993,6 +993,91 @@
 
     return null;
   };
+  const readRuntimeCacheEntry = (cache, key) => {
+    if (!cache.has(key)) {
+      return { hit: false, value: null };
+    }
+
+    const cachedEntry = cache.get(key);
+
+    if (!cachedEntry || cachedEntry.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return { hit: false, value: null };
+    }
+
+    return { hit: true, value: cachedEntry.value };
+  };
+  const writeRuntimeCacheEntry = (cache, key, value, ttlMs) => {
+    cache.set(key, {
+      value,
+      expiresAt: Date.now() + ttlMs,
+    });
+
+    return value;
+  };
+  const runCachedLookup = async (cache, key, ttlMs, pendingKey, loader) => {
+    const cachedEntry = readRuntimeCacheEntry(cache, key);
+
+    if (cachedEntry.hit) {
+      return cachedEntry.value;
+    }
+
+    if (runtimePendingLookupCache.has(pendingKey)) {
+      return runtimePendingLookupCache.get(pendingKey);
+    }
+
+    const pendingLookup = Promise.resolve()
+      .then(loader)
+      .then((value) => {
+        writeRuntimeCacheEntry(cache, key, value, ttlMs);
+        runtimePendingLookupCache.delete(pendingKey);
+        return value;
+      })
+      .catch((error) => {
+        runtimePendingLookupCache.delete(pendingKey);
+        throw error;
+      });
+
+    runtimePendingLookupCache.set(pendingKey, pendingLookup);
+    return pendingLookup;
+  };
+  const cacheResolvedProfileSnapshot = (snapshot) => {
+    if (!snapshot || snapshot.isAnonymous) {
+      return snapshot;
+    }
+
+    if (typeof snapshot.profileId === "number" && snapshot.profileId > 0) {
+      writeRuntimeCacheEntry(
+        profileByIdRuntimeCache,
+        String(snapshot.profileId),
+        snapshot,
+        PROFILE_RUNTIME_CACHE_TTL_MS
+      );
+    }
+
+    const normalizedLogin = normalizeLogin(snapshot.login);
+    const normalizedDisplayName = normalizeProfileCommentAuthorName(snapshot.displayName);
+
+    if (normalizedLogin) {
+      writeRuntimeCacheEntry(
+        profileByAuthorRuntimeCache,
+        normalizedLogin,
+        snapshot,
+        PROFILE_RUNTIME_CACHE_TTL_MS
+      );
+    }
+
+    if (normalizedDisplayName) {
+      writeRuntimeCacheEntry(
+        profileByAuthorRuntimeCache,
+        normalizedDisplayName,
+        snapshot,
+        PROFILE_RUNTIME_CACHE_TTL_MS
+      );
+    }
+
+    return snapshot;
+  };
   const stripNullishFields = (value) =>
     Object.fromEntries(
       Object.entries(value).filter(([, entryValue]) => entryValue !== null && entryValue !== undefined)
@@ -2291,91 +2376,6 @@
       }
 
       return actorSnapshot;
-    };
-    const readRuntimeCacheEntry = (cache, key) => {
-      if (!cache.has(key)) {
-        return { hit: false, value: null };
-      }
-
-      const cachedEntry = cache.get(key);
-
-      if (!cachedEntry || cachedEntry.expiresAt <= Date.now()) {
-        cache.delete(key);
-        return { hit: false, value: null };
-      }
-
-      return { hit: true, value: cachedEntry.value };
-    };
-    const writeRuntimeCacheEntry = (cache, key, value, ttlMs) => {
-      cache.set(key, {
-        value,
-        expiresAt: Date.now() + ttlMs,
-      });
-
-      return value;
-    };
-    const runCachedLookup = async (cache, key, ttlMs, pendingKey, loader) => {
-      const cachedEntry = readRuntimeCacheEntry(cache, key);
-
-      if (cachedEntry.hit) {
-        return cachedEntry.value;
-      }
-
-      if (runtimePendingLookupCache.has(pendingKey)) {
-        return runtimePendingLookupCache.get(pendingKey);
-      }
-
-      const pendingLookup = Promise.resolve()
-        .then(loader)
-        .then((value) => {
-          writeRuntimeCacheEntry(cache, key, value, ttlMs);
-          runtimePendingLookupCache.delete(pendingKey);
-          return value;
-        })
-        .catch((error) => {
-          runtimePendingLookupCache.delete(pendingKey);
-          throw error;
-        });
-
-      runtimePendingLookupCache.set(pendingKey, pendingLookup);
-      return pendingLookup;
-    };
-    const cacheResolvedProfileSnapshot = (snapshot) => {
-      if (!snapshot || snapshot.isAnonymous) {
-        return snapshot;
-      }
-
-      if (typeof snapshot.profileId === "number" && snapshot.profileId > 0) {
-        writeRuntimeCacheEntry(
-          profileByIdRuntimeCache,
-          String(snapshot.profileId),
-          snapshot,
-          PROFILE_RUNTIME_CACHE_TTL_MS
-        );
-      }
-
-      const normalizedLogin = normalizeLogin(snapshot.login);
-      const normalizedDisplayName = normalizeProfileCommentAuthorName(snapshot.displayName);
-
-      if (normalizedLogin) {
-        writeRuntimeCacheEntry(
-          profileByAuthorRuntimeCache,
-          normalizedLogin,
-          snapshot,
-          PROFILE_RUNTIME_CACHE_TTL_MS
-        );
-      }
-
-      if (normalizedDisplayName) {
-        writeRuntimeCacheEntry(
-          profileByAuthorRuntimeCache,
-          normalizedDisplayName,
-          snapshot,
-          PROFILE_RUNTIME_CACHE_TTL_MS
-        );
-      }
-
-      return snapshot;
     };
 
     const findUserByLogin = async (loginLower) => {
