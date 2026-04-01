@@ -3788,6 +3788,7 @@ export default function ProfilePage() {
       return;
     }
 
+    console.log("[handleBanToggle] Starting ban toggle for profileId:", activeProfile.profileId, "current isTargetBanned:", isTargetBanned, "next will be:", !isTargetBanned);
     setBanError(null);
     setBanSuccess(null);
     setIsBanSaving(true);
@@ -3795,6 +3796,9 @@ export default function ProfilePage() {
 
     try {
       const snapshot = await bridge.adminSetProfileBan(activeProfile.profileId, !isTargetBanned);
+
+      console.log("[handleBanToggle] Received snapshot:", snapshot);
+      console.log("[handleBanToggle] snapshot.profileId:", snapshot?.profileId, "activeProfile.profileId:", activeProfile.profileId);
 
       if (!snapshot || snapshot.profileId !== activeProfile.profileId) {
         throw new Error("Could not refresh the target profile after updating the ban status.");
@@ -3806,6 +3810,7 @@ export default function ProfilePage() {
       });
       setBanSuccess(isTargetBanned ? "Account unbanned." : "Account banned.");
     } catch (error) {
+      console.error("[handleBanToggle] Error:", error);
       setOptimisticAdminBanState(null);
       setBanError(error instanceof Error ? error.message : "Could not update the ban status.");
     } finally {

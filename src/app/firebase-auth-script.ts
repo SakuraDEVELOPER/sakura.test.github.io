@@ -6288,6 +6288,7 @@
       }
 
       const isBanned = Boolean(nextIsBanned);
+      console.log("[adminSetProfileBan] Called with profileId:", profileId, "isBanned:", isBanned);
       markProfileForFreshFetch(profileId);
       let ensuredRootContext = null;
       const ensureRootContext = async () => {
@@ -6306,6 +6307,8 @@
         "Ban status could not be saved."
       );
 
+      console.log("[adminSetProfileBan] supabaseResponse:", supabaseResponse);
+
       if (supabaseResponse) {
         const responseIsBanned =
           typeof supabaseResponse?.isBanned === "boolean"
@@ -6313,6 +6316,8 @@
             : isBanned;
         const responseBannedAt =
           typeof supabaseResponse?.bannedAt === "string" ? supabaseResponse.bannedAt : null;
+
+        console.log("[adminSetProfileBan] responseIsBanned:", responseIsBanned, "responseBannedAt:", responseBannedAt);
 
         if (window.sakuraCurrentUserSnapshot?.profileId === profileId) {
           const currentSnapshot = await resolveSupabaseSessionSnapshotFallback();
@@ -6328,6 +6333,7 @@
               await enforceActiveSessionNotBanned(nextSnapshot, { throwError: true });
             }
 
+            console.log("[adminSetProfileBan] Returning current user snapshot");
             return nextSnapshot;
           }
         }
@@ -6340,13 +6346,19 @@
           profileId,
         });
 
+        console.log("[adminSetProfileBan] mappedSnapshot:", mappedSnapshot);
+
         if (mappedSnapshot) {
+          console.log("[adminSetProfileBan] Returning mappedSnapshot");
           return mappedSnapshot;
         }
 
         const refreshedSnapshot = await getProfileById(profileId).catch(() => null);
 
+        console.log("[adminSetProfileBan] refreshedSnapshot:", refreshedSnapshot);
+
         if (refreshedSnapshot) {
+          console.log("[adminSetProfileBan] Returning refreshedSnapshot");
           return {
             ...refreshedSnapshot,
             isBanned: responseIsBanned,
