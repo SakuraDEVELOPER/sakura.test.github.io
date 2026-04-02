@@ -281,6 +281,13 @@ const normalizeSupabaseAuthError = (error: unknown) => {
     );
   }
 
+  if (code === "email_not_confirmed" || normalizedMessage.includes("email not confirmed")) {
+    return createSupabaseBridgeError(
+      "auth/email-not-verified",
+      "Подтвердите почту, прежде чем входить через Supabase Auth."
+    );
+  }
+
   if (
     code === "invalid_credentials" ||
     normalizedMessage.includes("invalid login credentials") ||

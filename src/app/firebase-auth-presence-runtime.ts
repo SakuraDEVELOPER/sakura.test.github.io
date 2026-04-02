@@ -9,6 +9,9 @@ type FirebaseUserLike = {
   uid: string;
   isAnonymous: boolean;
   getIdToken?: () => Promise<string>;
+  stsTokenManager?: {
+    accessToken?: string | null;
+  } | null;
 };
 
 type VisitHistoryEntry = {
@@ -89,6 +92,7 @@ type PresenceSyncOptions = Record<string, unknown> & {
   source?: string;
   forceVisit?: boolean;
   visibility?: "visible" | "hidden";
+  transport?: "default" | "keepalive-only";
 };
 
 type SupabaseAuthSessionLike = {
@@ -247,6 +251,8 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   const pendingOnlineUsersLookups = new Map<string, Promise<SiteOnlineUser[]>>();
   let lastPresenceSignature = "";
   let lastPresenceAt = 0;
+  let lastSupabaseAccessToken: string | null = null;
+  let lastFirebaseIdToken: string | null = null;
   let stopPresenceTrackingInternal = () => {};
 
   const normalizeSupabaseInteger = (value: unknown) => {
@@ -309,6 +315,16 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   const getSupabaseBridgeAccessToken = async () => {
     try {
       const runtimeWindow = getRuntimeWindow();
+      const currentSessionAccessToken =
+        typeof runtimeWindow.sakuraSupabaseCurrentSession?.access_token === "string" &&
+        runtimeWindow.sakuraSupabaseCurrentSession.access_token
+          ? runtimeWindow.sakuraSupabaseCurrentSession.access_token
+          : null;
+
+      if (currentSessionAccessToken) {
+        lastSupabaseAccessToken = currentSessionAccessToken;
+        return currentSessionAccessToken;
+      }
 
       if (!runtimeWindow.sakuraSupabaseAuth && typeof runtimeWindow.sakuraStartSupabaseAuth === "function") {
         await runtimeWindow.sakuraStartSupabaseAuth();
@@ -318,29 +334,51 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         typeof runtimeWindow.sakuraSupabaseCurrentSession?.access_token === "string" &&
         runtimeWindow.sakuraSupabaseCurrentSession.access_token
       ) {
+        lastSupabaseAccessToken = runtimeWindow.sakuraSupabaseCurrentSession.access_token;
         return runtimeWindow.sakuraSupabaseCurrentSession.access_token;
       }
 
       if (runtimeWindow.sakuraSupabaseAuth?.getSession) {
         const session = await runtimeWindow.sakuraSupabaseAuth.getSession();
-        return typeof session?.access_token === "string" && session.access_token
-          ? session.access_token
-          : null;
+        if (typeof session?.access_token === "string" && session.access_token) {
+          lastSupabaseAccessToken = session.access_token;
+          return session.access_token;
+        }
+
+        return null;
       }
     } catch {}
 
     return null;
   };
+  const getCachedSupabaseBridgeAccessToken = () => {
+    const runtimeWindow = getRuntimeWindow();
+    const currentSessionAccessToken =
+      typeof runtimeWindow.sakuraSupabaseCurrentSession?.access_token === "string" &&
+      runtimeWindow.sakuraSupabaseCurrentSession.access_token
+        ? runtimeWindow.sakuraSupabaseCurrentSession.access_token
+        : null;
+
+    if (currentSessionAccessToken) {
+      lastSupabaseAccessToken = currentSessionAccessToken;
+      return currentSessionAccessToken;
+    }
+
+    return lastSupabaseAccessToken;
+  };
 
   const callSupabasePresenceRpc = async <TResponse extends SupabaseRow>(
     functionName: string,
     payload: Record<string, unknown>,
+    options: { cachedOnly?: boolean } = {},
   ) => {
     if (!supabaseReadsEnabled) {
       return null;
     }
 
-    const accessToken = await getSupabaseBridgeAccessToken();
+    const accessToken = options.cachedOnly
+      ? getCachedSupabaseBridgeAccessToken()
+      : await getSupabaseBridgeAccessToken();
 
     if (!accessToken) {
       return null;
@@ -377,10 +415,25 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     }
 
     try {
-      return await user.getIdToken();
+      const idToken = await user.getIdToken();
+      lastFirebaseIdToken = idToken;
+      return idToken;
     } catch {
       return null;
     }
+  };
+  const getCachedSupabaseSyncToken = (user: FirebaseUserLike | null) => {
+    const cachedUserToken =
+      typeof user?.stsTokenManager?.accessToken === "string" && user.stsTokenManager.accessToken
+        ? user.stsTokenManager.accessToken
+        : null;
+
+    if (cachedUserToken) {
+      lastFirebaseIdToken = cachedUserToken;
+      return cachedUserToken;
+    }
+
+    return lastFirebaseIdToken;
   };
 
   const syncSupabasePresenceRecord = async (
@@ -424,6 +477,70 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       return response.ok;
     } catch (error) {
       console.error("Failed to sync presence to Supabase:", error);
+      return false;
+    }
+  };
+  const queueSupabasePresenceRpcKeepalive = (payload: Record<string, unknown>) => {
+    if (!supabaseReadsEnabled) {
+      return false;
+    }
+
+    const accessToken = getCachedSupabaseBridgeAccessToken();
+
+    if (!accessToken) {
+      return false;
+    }
+
+    try {
+      void fetch(buildSupabaseRpcUrl("sync_current_profile_presence_rpc"), {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+          Authorization: "Bearer " + accessToken,
+          "Accept-Profile": "public",
+          "Content-Profile": "public",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      }).catch(() => null);
+
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const queueSupabasePresenceFunctionKeepalive = (
+    user: FirebaseUserLike | null,
+    presencePayload: Record<string, unknown>,
+  ) => {
+    if (!supabaseLiveSyncActive) {
+      return false;
+    }
+
+    const idToken = getCachedSupabaseSyncToken(user);
+
+    if (!idToken) {
+      return false;
+    }
+
+    try {
+      void fetch(supabaseSyncFunctionUrl, {
+        method: "POST",
+        keepalive: true,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          action: "upsert_presence",
+          presence: presencePayload,
+        }),
+      }).catch(() => null);
+
+      return true;
+    } catch {
       return false;
     }
   };
@@ -522,6 +639,10 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
   const invalidateSiteOnlineUsersCache = () => {
     siteOnlineUsersRuntimeCache.delete("all");
+  };
+  const dispatchPresenceDirty = () => {
+    invalidateSiteOnlineUsersCache();
+    window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
   };
 
   const stopPresenceTracking = () => {
@@ -840,9 +961,51 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
             status,
           })
         : previousVisits;
+      const nextSnapshotDetails = {
+        ...(currentSnapshot ?? {}),
+        visitHistory,
+        presence,
+      };
+      const targetProfileId =
+        typeof currentSnapshot?.profileId === "number" ? currentSnapshot.profileId : null;
 
       lastPresenceSignature = signature;
       lastPresenceAt = Date.now();
+
+      if (options.transport === "keepalive-only") {
+        queueSupabasePresenceRpcKeepalive({
+          target_status: presence.status,
+          target_is_online: presence.isOnline,
+          target_current_path: presence.currentPath,
+          target_last_seen_at: presence.lastSeenAt,
+          target_source: source,
+          target_force_visit: Boolean(options.forceVisit),
+        });
+
+        if (user && !user.isAnonymous) {
+          queueSupabasePresenceFunctionKeepalive(user, {
+            profileId: targetProfileId,
+            status: presence.status,
+            isOnline: presence.isOnline,
+            currentPath: presence.currentPath,
+            lastSeenAt: presence.lastSeenAt,
+          });
+        }
+
+        dispatchPresenceDirty();
+
+        if (user && !user.isAnonymous) {
+          return publishUserSnapshot(toUserSnapshot(user, nextSnapshotDetails));
+        }
+
+        if (effectiveUid) {
+          return publishUserSnapshot(
+            toStoredUserSnapshot(effectiveUid, nextSnapshotDetails)
+          );
+        }
+
+        return currentSnapshot ?? null;
+      }
 
       const supabaseResponse = await callSupabasePresenceRpc<SupabasePresenceRpcResponse>(
         "sync_current_profile_presence_rpc",
@@ -874,8 +1037,7 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
               ? supabaseResponse.authUserId
               : effectiveUid;
 
-        invalidateSiteOnlineUsersCache();
-        window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+        dispatchPresenceDirty();
 
         if (user && !user.isAnonymous) {
           return publishUserSnapshot(toUserSnapshot(user, nextSnapshotDetails));
@@ -887,16 +1049,11 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       }
 
       if (!user || user.isAnonymous) {
-        invalidateSiteOnlineUsersCache();
-        window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+        dispatchPresenceDirty();
 
         if (effectiveUid) {
           return publishUserSnapshot(
-            toStoredUserSnapshot(effectiveUid, {
-              ...(currentSnapshot ?? {}),
-              visitHistory,
-              presence,
-            })
+            toStoredUserSnapshot(effectiveUid, nextSnapshotDetails)
           );
         }
 
@@ -920,9 +1077,7 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       const profileId =
         typeof existingData?.profileId === "number"
           ? existingData.profileId
-          : typeof currentSnapshot?.profileId === "number"
-            ? currentSnapshot.profileId
-            : null;
+          : targetProfileId;
 
       void syncSupabasePresenceRecord(user, {
         profileId,
@@ -932,8 +1087,7 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         lastSeenAt: presence.lastSeenAt,
       });
 
-      invalidateSiteOnlineUsersCache();
-      window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+      dispatchPresenceDirty();
       return publishUserSnapshot(toUserSnapshot(user, { ...existingData, visitHistory, presence }));
     } catch (error) {
       if (!isPermissionDeniedError(error)) {
@@ -980,12 +1134,18 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   const startPresenceTracking = (user: FirebaseUserLike | null) => {
     stopPresenceTracking();
 
-    const syncCurrentPresence = (source: string, forceVisit = false, visibility?: "visible" | "hidden") =>
+    const syncCurrentPresence = (
+      source: string,
+      forceVisit = false,
+      visibility?: "visible" | "hidden",
+      transport: PresenceSyncOptions["transport"] = "default",
+    ) =>
       syncPresence(user, {
         path: readCurrentLocationPath(),
         source,
         forceVisit,
         visibility,
+        transport,
       }).catch((error) => {
         console.error("Failed to sync presence:", error);
       });
@@ -1011,11 +1171,11 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     };
 
     const handlePageHide = () => {
-      void syncCurrentPresence("page-hide", true, "hidden");
+      void syncCurrentPresence("page-hide", true, "hidden", "keepalive-only");
     };
 
     const handleBeforeUnload = () => {
-      void syncCurrentPresence("before-unload", true, "hidden");
+      void syncCurrentPresence("before-unload", true, "hidden", "keepalive-only");
     };
 
     const intervalId = window.setInterval(() => {
@@ -1024,7 +1184,7 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-    window.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pageshow", handlePageShow);
     window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -1033,13 +1193,12 @@ export const createFirebasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       window.clearInterval(intervalId);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
-      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pageshow", handlePageShow);
       window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("beforeunload", handleBeforeUnload);
       clearPresenceTabRegistryEntry();
-      invalidateSiteOnlineUsersCache();
-      window.dispatchEvent(new CustomEvent("sakura-presence-dirty"));
+      dispatchPresenceDirty();
     };
 
     void syncCurrentPresence("session-start", true);

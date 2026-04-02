@@ -193,6 +193,7 @@ const requestSupabaseAuthBoot = () => {
 
 const AUTH_READY_EVENT = "sakura-auth-ready";
 const AUTH_ERROR_EVENT = "sakura-auth-error";
+const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
 const USER_UPDATE_EVENT = "sakura-user-update";
 const OPEN_AUTH_MODAL_EVENT = "sakura-open-auth-modal";
 const EMAIL_VERIFICATION_LOCK_EVENT = "sakura-email-verification-lock";
@@ -672,6 +673,7 @@ function HeaderAuth() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
+  const [authStateSettled, setAuthStateSettled] = useState(false);
   const [authLoadError, setAuthLoadError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<AuthUserSnapshot | null>(null);
   const [identifier, setIdentifier] = useState("");
@@ -690,7 +692,8 @@ function HeaderAuth() {
   const [isVerificationSending, setIsVerificationSending] = useState(false);
   const [isVerificationRefreshing, setIsVerificationRefreshing] = useState(false);
   const [pendingCallbackError, setPendingCallbackError] = useState<string | null>(null);
-  const visibleUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
+  const visibleUser =
+    authStateSettled && currentUser && !currentUser.isAnonymous ? currentUser : null;
   const isVerificationLockedUser = isEmailVerificationLocked(visibleUser);
   const isGoogleSetupFlowActive = requiresGoogleAccountCompletion(visibleUser);
   const currentUserId = visibleUser?.uid ?? null;
@@ -719,10 +722,12 @@ function HeaderAuth() {
     setCurrentUser(
       window.sakuraCurrentUserSnapshot ?? readCachedAuthSnapshot<AuthUserSnapshot>() ?? null
     );
+    setAuthStateSettled(Boolean(window.sakuraAuthStateSettled));
 
     const syncAuthBridge = () => {
       if (window.sakuraFirebaseAuth) {
         setAuthReady(true);
+        setAuthStateSettled(Boolean(window.sakuraAuthStateSettled));
         setAuthLoadError(null);
         setCurrentUser(window.sakuraCurrentUserSnapshot ?? null);
         unsubscribe();
@@ -739,6 +744,10 @@ function HeaderAuth() {
 
     const handleReady = () => {
       syncAuthBridge();
+    };
+    const handleAuthStateSettled = () => {
+      setAuthStateSettled(Boolean(window.sakuraAuthStateSettled));
+      setCurrentUser(window.sakuraCurrentUserSnapshot ?? null);
     };
 
     const handleUserUpdate = () => {
@@ -783,6 +792,7 @@ function HeaderAuth() {
     syncAuthBridge();
     window.addEventListener(AUTH_READY_EVENT, handleReady);
     window.addEventListener(AUTH_ERROR_EVENT, handleError);
+    window.addEventListener(AUTH_STATE_SETTLED_EVENT, handleAuthStateSettled);
     window.addEventListener(USER_UPDATE_EVENT, handleUserUpdate);
     window.addEventListener(OPEN_AUTH_MODAL_EVENT, handleOpenAuthModal);
     window.addEventListener(EMAIL_VERIFICATION_LOCK_EVENT, handleVerificationLock);
@@ -791,6 +801,7 @@ function HeaderAuth() {
       window.clearTimeout(timeoutId);
       window.removeEventListener(AUTH_READY_EVENT, handleReady);
       window.removeEventListener(AUTH_ERROR_EVENT, handleError);
+      window.removeEventListener(AUTH_STATE_SETTLED_EVENT, handleAuthStateSettled);
       window.removeEventListener(USER_UPDATE_EVENT, handleUserUpdate);
       window.removeEventListener(OPEN_AUTH_MODAL_EVENT, handleOpenAuthModal);
       window.removeEventListener(EMAIL_VERIFICATION_LOCK_EVENT, handleVerificationLock);
@@ -811,6 +822,7 @@ function HeaderAuth() {
       while (!isCancelled && Date.now() - startedAt < AUTH_BOOT_TIMEOUT_MS) {
         if (window.sakuraFirebaseAuth) {
           setAuthReady(true);
+          setAuthStateSettled(Boolean(window.sakuraAuthStateSettled));
           setAuthLoadError(null);
           setCurrentUser(window.sakuraCurrentUserSnapshot ?? null);
           return;
@@ -840,18 +852,23 @@ function HeaderAuth() {
   }, [authReady, authLoadError, isModalOpen]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !currentUserId || !window.sakuraFirebaseAuth) {
+    if (
+      typeof window === "undefined" ||
+      !authStateSettled ||
+      !currentUserId ||
+      !window.sakuraFirebaseAuth
+    ) {
       return;
     }
 
     window.sakuraFirebaseAuth
       .syncPresence({
-        path: window.location.pathname,
+        path: `${window.location.pathname}${window.location.search}`,
         source: "home-view",
         forceVisit: true,
       })
       .catch(() => {});
-  }, [currentUserId]);
+  }, [authStateSettled, currentUserId]);
 
   useEffect(() => {
     if (!isModalOpen && !isVerificationModalOpen) {
@@ -1462,7 +1479,7 @@ function HeaderAuth() {
                 </div>
               ) : null}
 
-              {!authReady && !authLoadError ? (
+              {(!authReady || !authStateSettled) && !authLoadError ? (
                 <div className="mt-5 rounded-2xl border border-[#2b1b1e] bg-[#120d0f] px-4 py-3 text-sm text-[#f2c0cb]">
                   Подключаем вход в аккаунт...
                 </div>
@@ -1479,7 +1496,7 @@ function HeaderAuth() {
                   <button
                     type="button"
                     onClick={handleGoogleLogin}
-                    disabled={!authReady || isGoogleSubmitting}
+                    disabled={!authReady || !authStateSettled || isGoogleSubmitting}
                     className="mt-5 inline-flex w-full items-center justify-center gap-3 rounded-2xl border border-[#ffb7c5] bg-[#1a1a1a] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#252525] hover:shadow-[0_0_15px_#ffb7c5] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <img
@@ -1618,7 +1635,7 @@ function HeaderAuth() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting || !authReady}
+                  disabled={isSubmitting || !authReady || !authStateSettled}
                   className="inline-flex w-full items-center justify-center rounded-full bg-[#ffb7c5] px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black shadow-[0_0_30px_rgba(255,183,197,0.12)] transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:bg-[#ffb7c5]/40 disabled:text-black/60"
                 >
                   {isSubmitting

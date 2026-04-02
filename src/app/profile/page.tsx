@@ -310,6 +310,10 @@ const getProfileActionErrorMessage = (error: unknown, fallback: string) => {
     return "Подтвердите почту, прежде чем пользоваться профилем и комментариями.";
   }
 
+  if (code === "auth/email-not-verified") {
+    return "Подтвердите почту, прежде чем пользоваться профилем и комментариями.";
+  }
+
   if (code === "avatar/action-timeout") {
     return "Avatar action took too long. Try a smaller file.";
   }
@@ -362,6 +366,10 @@ const getSupabaseAvatarUnavailableMessage = () =>
   "Supabase avatar upload is not configured for this build yet. Add NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET to the deployed site build.";
 const USER_AVATAR_UPGRADE_MESSAGE =
   "Вам нужно повышение профиля, чтобы использовать GIF и видео в аватаре. Для роли user доступны только статичные картинки.";
+const READABLE_USER_AVATAR_UPGRADE_MESSAGE =
+  USER_AVATAR_UPGRADE_MESSAGE.includes("Р")
+    ? "Вам нужно повышение профиля, чтобы использовать GIF и видео в аватаре. Для роли user доступны только статичные изображения."
+    : USER_AVATAR_UPGRADE_MESSAGE;
 const toCommentMediaPayload = (
   uploadResult: SupabaseCommentMediaUploadResult
 ): CommentMediaPayload => ({
@@ -3538,7 +3546,7 @@ export default function ProfilePage() {
     const bridge = getWindowState().sakuraFirebaseAuth;
     if (!file || !bridge) return;
     if (PREMIUM_AVATAR_MEDIA_TYPES.has(file.type) && !canUseEnhancedAvatarMedia) {
-      setAvatarError(USER_AVATAR_UPGRADE_MESSAGE);
+      setAvatarError(READABLE_USER_AVATAR_UPGRADE_MESSAGE);
       setAvatarSuccess(null);
       return;
     }
