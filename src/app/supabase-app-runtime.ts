@@ -293,11 +293,14 @@ const runtimeAuthListeners = new Set<(user: AppUserSnapshot | null) => void>();
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? "";
 const supabaseRestUrl = supabaseUrl ? `${supabaseUrl.replace(/\/+$/, "")}/rest/v1` : "";
+const normalizeSupabaseSyncFunctionUrl = (value: string) =>
+  value.trim().replace(/\/+$/, "").replace(/\/firebase-sync$/i, "/app-sync");
+
 const supabaseSyncFunctionUrl = (() => {
   const explicitUrl = process.env.NEXT_PUBLIC_SUPABASE_SYNC_FUNCTION_URL?.trim() ?? "";
 
   if (explicitUrl) {
-    return explicitUrl;
+    return normalizeSupabaseSyncFunctionUrl(explicitUrl);
   }
 
   if (!supabaseUrl) {
@@ -311,7 +314,7 @@ const supabaseSyncFunctionUrl = (() => {
       ? `${baseUrl.host.slice(0, baseUrl.host.length - baseSuffix.length)}.functions.supabase.co`
       : baseUrl.host;
 
-    return `${baseUrl.protocol}//${nextHost}/firebase-sync`;
+    return `${baseUrl.protocol}//${nextHost}/app-sync`;
   } catch {
     return "";
   }
@@ -748,8 +751,8 @@ const mapSupabaseProfilePayloadToSnapshot = (
 
   return {
     uid:
-      normalizeString(payload?.firebaseUid) ??
       normalizeString(payload?.authUserId) ??
+      normalizeString(payload?.firebaseUid) ??
       fallbackUser?.id ??
       "",
     isAnonymous: false,
@@ -796,8 +799,8 @@ const mapSupabaseProfileRowToSnapshot = (
   row
     ? cacheResolvedProfileSnapshot({
         uid:
-          normalizeString(row.firebase_uid) ??
           normalizeString(row.auth_user_id) ??
+          normalizeString(row.firebase_uid) ??
           "",
         isAnonymous: false,
         email: normalizeString(row.email),
@@ -840,8 +843,8 @@ const mapSupabaseCommentRowToComment = (row: SupabaseCommentRow | null): Profile
     id: row.id,
     profileId: normalizeInteger(row.profile_id),
     authorUid:
-      normalizeString(row.firebase_author_uid) ??
-      normalizeString(row.auth_user_id),
+      normalizeString(row.auth_user_id) ??
+      normalizeString(row.firebase_author_uid),
     authorProfileId: normalizeInteger(row.author_profile_id),
     authorName:
       normalizeString(row.author_name) ??
@@ -1676,7 +1679,7 @@ const createPresenceRuntime = () =>
     query: () => null,
     collection: () => null,
     where: () => null,
-    createFirebaseError: createAppError,
+    createAppError,
     isPermissionDeniedError: () => false,
     buildFallbackUserDetails: (userLike) => ({
       uid: userLike?.uid ?? null,

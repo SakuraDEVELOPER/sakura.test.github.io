@@ -5,7 +5,7 @@ type FirestoreQuery = unknown;
 type FirestoreSetOptions = Record<string, unknown>;
 type SupabaseRow = Record<string, unknown>;
 
-type FirebaseUserLike = {
+type AppUserLike = {
   uid: string;
   isAnonymous: boolean;
   getIdToken?: () => Promise<string>;
@@ -117,6 +117,7 @@ type SupabasePresenceRow = SupabaseRow & {
 
 type SupabaseProfileRow = SupabaseRow & {
   profile_id?: unknown;
+  auth_user_id?: unknown;
   firebase_uid?: unknown;
   display_name?: unknown;
   login?: unknown;
@@ -132,9 +133,9 @@ type SupabasePresenceRpcResponse = SupabaseRow & {
   authUserId?: string;
 };
 
-type FirebasePresenceRuntimeContext = {
+type AppPresenceRuntimeContext = {
   auth: {
-    currentUser: FirebaseUserLike | null;
+    currentUser: AppUserLike | null;
   };
   db: FirestoreDatabase;
   usersCollection: FirestoreReference;
@@ -149,10 +150,10 @@ type FirebasePresenceRuntimeContext = {
   query: (...args: unknown[]) => FirestoreQuery;
   collection: (...args: unknown[]) => FirestoreReference;
   where: (...args: unknown[]) => unknown;
-  createFirebaseError: (code: string, message: string) => Error & { code?: string };
+  createAppError: (code: string, message: string) => Error & { code?: string };
   isPermissionDeniedError: (error: unknown) => boolean;
   buildFallbackUserDetails: (
-    user: FirebaseUserLike | null,
+    user: AppUserLike | null,
     options?: PresenceSyncOptions,
   ) => RuntimeUserDetails;
   normalizeVisitHistory: (value: unknown) => VisitHistoryEntry[];
@@ -160,7 +161,7 @@ type FirebasePresenceRuntimeContext = {
     previousVisits: VisitHistoryEntry[],
     nextVisit: VisitHistoryEntry,
   ) => VisitHistoryEntry[];
-  toUserSnapshot: (user: FirebaseUserLike, details: RuntimeUserDetails) => RuntimeUserSnapshot;
+  toUserSnapshot: (user: AppUserLike, details: RuntimeUserDetails) => RuntimeUserSnapshot;
   toStoredUserSnapshot: (uid: string, details: RuntimeUserDetails) => RuntimeUserSnapshot;
   normalizePresence: (value: unknown, fallbackPath?: string | null) => PresenceSnapshot;
   isPresenceFreshOnline: (presence: unknown) => boolean;
@@ -185,11 +186,14 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const supabaseRestUrl = supabaseUrl ? supabaseUrl.replace(/\/+$/, "") + "/rest/v1" : "";
 const supabaseReadsEnabled = Boolean(supabaseRestUrl && supabaseAnonKey);
 const supabaseLiveSyncEnabled = (process.env.NEXT_PUBLIC_SUPABASE_LIVE_SYNC_ENABLED ?? "") === "true";
+const normalizeSupabaseSyncFunctionUrl = (value: string) =>
+  value.trim().replace(/\/+$/, "").replace(/\/firebase-sync$/i, "/app-sync");
+
 const supabaseSyncFunctionUrl = (() => {
   const explicitUrl = process.env.NEXT_PUBLIC_SUPABASE_SYNC_FUNCTION_URL ?? "";
 
   if (explicitUrl) {
-    return explicitUrl;
+    return normalizeSupabaseSyncFunctionUrl(explicitUrl);
   }
 
   if (!supabaseUrl) {
@@ -203,7 +207,7 @@ const supabaseSyncFunctionUrl = (() => {
       ? baseUrl.host.slice(0, baseUrl.host.length - baseSuffix.length) + ".functions.supabase.co"
       : baseUrl.host;
 
-    return `${baseUrl.protocol}//${nextHost}/firebase-sync`;
+    return `${baseUrl.protocol}//${nextHost}/app-sync`;
   } catch {
     return "";
   }
@@ -212,7 +216,7 @@ const supabaseLiveSyncActive = Boolean(supabaseLiveSyncEnabled && supabaseSyncFu
 const readCurrentLocationPath = () => `${window.location.pathname}${window.location.search}`;
 const getRuntimeWindow = () => window as PresenceRuntimeWindow;
 
-export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeContext) => {
+export const createSupabasePresenceRuntime = (context: AppPresenceRuntimeContext) => {
   const {
     auth,
     db,
@@ -223,7 +227,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     query,
     collection,
     where,
-    createFirebaseError,
+    createAppError,
     isPermissionDeniedError,
     buildFallbackUserDetails,
     normalizeVisitHistory,
@@ -252,7 +256,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
   let lastPresenceSignature = "";
   let lastPresenceAt = 0;
   let lastSupabaseAccessToken: string | null = null;
-  let lastFirebaseIdToken: string | null = null;
+  let lastBridgeIdToken: string | null = null;
   let stopPresenceTrackingInternal = () => {};
 
   const normalizeSupabaseInteger = (value: unknown) => {
@@ -409,35 +413,35 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     }
   };
 
-  const getSupabaseSyncToken = async (user: FirebaseUserLike | null) => {
+  const getSupabaseSyncToken = async (user: AppUserLike | null) => {
     if (!user || typeof user.getIdToken !== "function") {
       return null;
     }
 
     try {
       const idToken = await user.getIdToken();
-      lastFirebaseIdToken = idToken;
+      lastBridgeIdToken = idToken;
       return idToken;
     } catch {
       return null;
     }
   };
-  const getCachedSupabaseSyncToken = (user: FirebaseUserLike | null) => {
+  const getCachedSupabaseSyncToken = (user: AppUserLike | null) => {
     const cachedUserToken =
       typeof user?.stsTokenManager?.accessToken === "string" && user.stsTokenManager.accessToken
         ? user.stsTokenManager.accessToken
         : null;
 
     if (cachedUserToken) {
-      lastFirebaseIdToken = cachedUserToken;
+      lastBridgeIdToken = cachedUserToken;
       return cachedUserToken;
     }
 
-    return lastFirebaseIdToken;
+    return lastBridgeIdToken;
   };
 
   const syncSupabasePresenceRecord = async (
-    user: FirebaseUserLike | null,
+    user: AppUserLike | null,
     presencePayload: Record<string, unknown>,
   ) => {
     if (!supabaseLiveSyncActive) {
@@ -512,7 +516,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     }
   };
   const queueSupabasePresenceFunctionKeepalive = (
-    user: FirebaseUserLike | null,
+    user: AppUserLike | null,
     presencePayload: Record<string, unknown>,
   ) => {
     if (!supabaseLiveSyncActive) {
@@ -737,7 +741,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
         if (profileIds.length) {
           const profileRows = await fetchSupabaseRows<SupabaseProfileRow>("public_profiles", {
-            select: "profile_id,firebase_uid,display_name,login,photo_url,roles,is_banned",
+            select: "profile_id,auth_user_id,firebase_uid,display_name,login,photo_url,roles,is_banned",
             profile_id: `in.(${profileIds.join(",")})`,
           });
 
@@ -767,7 +771,11 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
 
                 return [{
                   uid:
-                    typeof profileRow.firebase_uid === "string" ? profileRow.firebase_uid : null,
+                    typeof profileRow.auth_user_id === "string"
+                      ? profileRow.auth_user_id
+                      : typeof profileRow.firebase_uid === "string"
+                        ? profileRow.firebase_uid
+                        : null,
                   profileId,
                   displayName:
                     typeof profileRow.display_name === "string"
@@ -877,9 +885,9 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
         throw error;
       }
 
-      throw createFirebaseError(
+      throw createAppError(
         "presence/read-denied",
-        "Online presence could not be loaded. Check Firestore read rules for users."
+        "Online presence could not be loaded. Check Supabase public views and presence policies."
       );
     }
   };
@@ -909,7 +917,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
       }));
     });
 
-  const syncPresence = async (user: FirebaseUserLike | null, options: PresenceSyncOptions = {}) => {
+  const syncPresence = async (user: AppUserLike | null, options: PresenceSyncOptions = {}) => {
     try {
       const currentSnapshot = getRuntimeWindow().sakuraCurrentUserSnapshot;
       const effectiveUid =
@@ -1031,10 +1039,10 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
           presence: responsePresence,
         };
         const fallbackUid =
-          typeof supabaseResponse.firebaseUid === "string" && supabaseResponse.firebaseUid
-            ? supabaseResponse.firebaseUid
-            : typeof supabaseResponse.authUserId === "string" && supabaseResponse.authUserId
+          typeof supabaseResponse.authUserId === "string" && supabaseResponse.authUserId
               ? supabaseResponse.authUserId
+            : typeof supabaseResponse.firebaseUid === "string" && supabaseResponse.firebaseUid
+              ? supabaseResponse.firebaseUid
               : effectiveUid;
 
         dispatchPresenceDirty();
@@ -1131,7 +1139,7 @@ export const createSupabasePresenceRuntime = (context: FirebasePresenceRuntimeCo
     }
   };
 
-  const startPresenceTracking = (user: FirebaseUserLike | null) => {
+  const startPresenceTracking = (user: AppUserLike | null) => {
     stopPresenceTracking();
 
     const syncCurrentPresence = (

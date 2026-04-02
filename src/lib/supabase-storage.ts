@@ -18,11 +18,14 @@ const ALLOWED_AVATAR_MEDIA_TYPES = new Set([
   "video/webm",
 ]);
 const MAX_AVATAR_UPLOAD_BYTES = 50 * 1024 * 1024;
+const normalizeSupabaseSyncFunctionUrl = (value: string) =>
+  value.trim().replace(/\/+$/, "").replace(/\/firebase-sync$/i, "/app-sync");
+
 const supabaseSyncFunctionUrl = (() => {
   const explicitUrl = process.env.NEXT_PUBLIC_SUPABASE_SYNC_FUNCTION_URL?.trim() ?? "";
 
   if (explicitUrl) {
-    return explicitUrl;
+    return normalizeSupabaseSyncFunctionUrl(explicitUrl);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
@@ -38,7 +41,7 @@ const supabaseSyncFunctionUrl = (() => {
       ? `${baseUrl.host.slice(0, baseUrl.host.length - baseSuffix.length)}.functions.supabase.co`
       : baseUrl.host;
 
-    return `${baseUrl.protocol}//${nextHost}/firebase-sync`;
+    return `${baseUrl.protocol}//${nextHost}/app-sync`;
   } catch {
     return "";
   }
@@ -120,7 +123,7 @@ function isStorageRlsError(error: unknown) {
   );
 }
 
-async function getFirebaseBridgeAuthToken() {
+async function getAppBridgeAuthToken() {
   if (typeof window === "undefined") {
     return null;
   }
@@ -163,16 +166,16 @@ async function getSupabaseBridgeAuthToken() {
 }
 
 async function getStorageBridgeAuthToken() {
-  const firebaseToken = await getFirebaseBridgeAuthToken();
+  const bridgeToken = await getAppBridgeAuthToken();
 
-  if (firebaseToken) {
-    return firebaseToken;
+  if (bridgeToken) {
+    return bridgeToken;
   }
 
   return await getSupabaseBridgeAuthToken();
 }
 
-async function callFirebaseSyncBridge<T>(body: Record<string, unknown>): Promise<T> {
+async function callSupabaseSyncFunction<T>(body: Record<string, unknown>): Promise<T> {
   if (!supabaseSyncFunctionUrl) {
     throw new Error("Supabase sync function URL is not configured for this build.");
   }
@@ -207,7 +210,7 @@ async function createSignedUploadTarget(
   bucket: string,
   objectPath: string
 ): Promise<SignedUploadPayload> {
-  return callFirebaseSyncBridge<SignedUploadPayload>({
+  return callSupabaseSyncFunction<SignedUploadPayload>({
     action: "create_signed_upload_url",
     bucket,
     objectPath,
@@ -215,7 +218,7 @@ async function createSignedUploadTarget(
 }
 
 async function deleteStorageObjectViaBridge(bucket: string, objectPath: string) {
-  await callFirebaseSyncBridge<{ ok: true }>({
+  await callSupabaseSyncFunction<{ ok: true }>({
     action: "delete_storage_object",
     bucket,
     objectPath,

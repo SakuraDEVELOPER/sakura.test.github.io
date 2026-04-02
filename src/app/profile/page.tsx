@@ -144,7 +144,6 @@ type Bridge = {
 };
 
 type RuntimeWindow = Window & {
-  firebaseConfig?: { projectId?: string };
   sakuraCurrentUserSnapshot?: UserProfile | null;
   sakuraAuthStateSettled?: boolean;
   sakuraStartSupabaseApp?: () => Promise<unknown> | unknown;

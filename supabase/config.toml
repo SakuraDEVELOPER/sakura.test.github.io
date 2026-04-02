@@ -1,7 +1,4 @@
 project_id = "dhqhubeufuorvxpvibwc"
 
-[functions.firebase-sync]
-verify_jwt = false
-
-[functions.firebase-auth-bridge]
+[functions.app-sync]
 verify_jwt = false

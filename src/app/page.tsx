@@ -70,16 +70,6 @@ const showcaseSlides: ShowcaseSlide[] = [
   },
 ];
 
-type FirebaseClientConfig = {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  storageBucket: string;
-  messagingSenderId: string;
-  appId: string;
-  measurementId: string;
-};
-
 type AuthMode = "login" | "register";
 
 type VisitHistoryEntry = {
@@ -118,7 +108,7 @@ type AuthUserSnapshot = {
   presence: PresenceSnapshot | null;
 };
 
-type FirebaseAuthBridge = {
+type AppAuthBridge = {
   login: (identifier: string, password: string) => Promise<AuthUserSnapshot | null>;
   loginWithGoogle: () => Promise<AuthUserSnapshot | null>;
   completeGoogleAccount: (credentials: {
@@ -163,12 +153,11 @@ type SupabaseAuthBridge = {
 
 declare global {
   interface Window {
-    firebaseConfig?: FirebaseClientConfig;
     loginWithGoogle?: () => Promise<AuthUserSnapshot | null>;
     sakuraCurrentUserSnapshot?: AuthUserSnapshot | null;
     sakuraAuthStateSettled?: boolean;
     sakuraStartSupabaseApp?: () => Promise<unknown> | unknown;
-    sakuraAppAuth?: FirebaseAuthBridge;
+    sakuraAppAuth?: AppAuthBridge;
     sakuraAppAuthError?: string | null;
     sakuraStartSupabaseAuth?: () => Promise<unknown> | unknown;
     sakuraSupabaseAuth?: SupabaseAuthBridge;
@@ -399,7 +388,7 @@ function highestPriorityRole(roles: string[]) {
   })[0];
 }
 
-function getFirebaseErrorMessage(error: unknown) {
+function getAuthErrorMessage(error: unknown) {
   const code =
     typeof error === "object" && error !== null && "code" in error
       ? String((error as { code?: unknown }).code)
@@ -630,7 +619,7 @@ function SakuraBackground() {
       closeModal();
       navigateToProfile(snapshot);
     } catch (error) {
-      setSubmitError(getFirebaseErrorMessage(error));
+      setSubmitError(getAuthErrorMessage(error));
     } finally {
       setIsGoogleSubmitting(false);
     }
@@ -1025,7 +1014,7 @@ function HeaderAuth() {
           : "Почта уже подтверждена."
       );
     } catch (error) {
-      setVerificationError(getFirebaseErrorMessage(error));
+      setVerificationError(getAuthErrorMessage(error));
     } finally {
       setIsVerificationSending(false);
     }
@@ -1057,7 +1046,7 @@ function HeaderAuth() {
       setFlashMessage("Почта подтверждена. Доступ к профилю открыт.");
       setVerificationSuccess("Почта подтверждена. Теперь можно открыть профиль.");
     } catch (error) {
-      setVerificationError(getFirebaseErrorMessage(error));
+      setVerificationError(getAuthErrorMessage(error));
     } finally {
       setIsVerificationRefreshing(false);
     }
@@ -1142,7 +1131,7 @@ function HeaderAuth() {
         normalizedLogin.length > 24 ||
         !LOGIN_PATTERN.test(normalizedLogin)
       ) {
-        setSubmitError(getFirebaseErrorMessage({ code: "auth/invalid-login" }));
+        setSubmitError(getAuthErrorMessage({ code: "auth/invalid-login" }));
         return;
       }
     }
@@ -1202,7 +1191,7 @@ function HeaderAuth() {
         await navigateToProfile(snapshot);
       }
     } catch (error) {
-      setSubmitError(getFirebaseErrorMessage(error));
+      setSubmitError(getAuthErrorMessage(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -1222,7 +1211,7 @@ function HeaderAuth() {
       await window.sakuraAppAuth.logout();
       setFlashMessage("Вы вышли из аккаунта.");
     } catch (error) {
-      setFlashMessage(getFirebaseErrorMessage(error));
+      setFlashMessage(getAuthErrorMessage(error));
     } finally {
       setIsLoggingOut(false);
     }
@@ -1285,7 +1274,7 @@ function HeaderAuth() {
       }
       await navigateToProfile(snapshot);
     } catch (error) {
-      setSubmitError(getFirebaseErrorMessage(error));
+      setSubmitError(getAuthErrorMessage(error));
     } finally {
       setIsGoogleSubmitting(false);
     }
