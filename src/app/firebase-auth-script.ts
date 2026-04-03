@@ -3184,9 +3184,19 @@
           PROFILE_COMMENTS_RUNTIME_CACHE_TTL_MS
         );
 
-      const supabaseFastComments = await fetchSupabaseCommentsByProfileId(profileId).catch(() => null);
+      const fetchSupabaseCommentsWithTimeout = () =>
+        withTimeout(
+          fetchSupabaseCommentsByProfileId(profileId),
+          PROFILE_LOOKUP_TIMEOUT_MS,
+          () =>
+            createFirebaseError(
+              "comments/supabase-timeout",
+              "Supabase comments request timed out."
+            )
+        );
+      const supabaseFastComments = await fetchSupabaseCommentsWithTimeout().catch(() => null);
 
-      if (Array.isArray(supabaseFastComments)) {
+      if (supabaseFastComments && supabaseFastComments.length) {
         return cacheComments(supabaseFastComments);
       }
 
@@ -3214,7 +3224,7 @@
 
       try {
         const firestoreComments = await readComments();
-        const supabaseComments = await fetchSupabaseCommentsByProfileId(profileId).catch(() => null);
+        const supabaseComments = await fetchSupabaseCommentsWithTimeout().catch(() => null);
 
         return cacheComments(
           mergeProfileCommentsWithFallback(firestoreComments, supabaseComments)
@@ -3225,7 +3235,7 @@
         }
       }
 
-      const supabaseComments = supabaseFastComments ?? await fetchSupabaseCommentsByProfileId(profileId);
+      const supabaseComments = supabaseFastComments ?? await fetchSupabaseCommentsWithTimeout().catch(() => null);
 
       if (supabaseComments) {
         return cacheComments(supabaseComments);
@@ -3253,7 +3263,7 @@
         return cacheComments(await readComments());
       } catch (error) {
         if (isPermissionDeniedError(error)) {
-          const fallbackSupabaseComments = await fetchSupabaseCommentsByProfileId(profileId);
+          const fallbackSupabaseComments = await fetchSupabaseCommentsWithTimeout().catch(() => null);
 
           if (fallbackSupabaseComments) {
             return cacheComments(fallbackSupabaseComments);
