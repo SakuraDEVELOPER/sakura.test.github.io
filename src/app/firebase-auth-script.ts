@@ -1254,7 +1254,7 @@
   const SUPABASE_PUBLIC_URL = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")};
   const SUPABASE_PUBLIC_ANON_KEY = ${JSON.stringify(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "")};
   const SUPABASE_REST_URL = SUPABASE_PUBLIC_URL
-    ? SUPABASE_PUBLIC_URL.replace(/\/+$/, "") + "/rest/v1"
+    ? SUPABASE_PUBLIC_URL.replace(/\\/+$/, "") + "/rest/v1"
     : "";
   const SUPABASE_PUBLIC_READS_ENABLED = Boolean(
     SUPABASE_REST_URL && SUPABASE_PUBLIC_ANON_KEY
