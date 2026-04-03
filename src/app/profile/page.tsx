@@ -1412,6 +1412,8 @@ export default function ProfilePage() {
   const headerProfileSearchInputRef = useRef<HTMLInputElement | null>(null);
   const prefetchedNeighborProfileIdsRef = useRef<Set<number>>(new Set());
   const prefetchingNeighborProfileIdsRef = useRef<Set<number>>(new Set());
+  const prefetchedCommentAuthorProfileIdsRef = useRef<Set<number>>(new Set());
+  const prefetchingCommentAuthorProfileIdsRef = useRef<Set<number>>(new Set());
   const currentUserIdentitySignature = currentUser
     ? `${currentUser.uid}:${currentUser.isAnonymous ? "1" : "0"}:${currentUser.profileId ?? ""}`
     : "guest";
@@ -1879,6 +1881,74 @@ export default function ProfilePage() {
     previousProfileId,
     nextProfileId,
   ]);
+
+  useEffect(() => {
+    if (!authReady || !authStateSettled || authError || !comments.length) {
+      return;
+    }
+
+    const bridge = getWindowState().sakuraFirebaseAuth;
+
+    if (!bridge) {
+      return;
+    }
+
+    const currentProfileId = typeof profile?.profileId === "number" ? profile.profileId : null;
+    const commentAuthorProfileIds = [
+      ...new Set(
+        comments
+          .map((comment) => comment.authorProfileId)
+          .filter(
+            (profileId): profileId is number =>
+              typeof profileId === "number" &&
+              profileId > 0 &&
+              profileId !== currentProfileId
+          )
+      ),
+    ].slice(0, 14);
+
+    commentAuthorProfileIds.forEach((authorProfileId) => {
+      if (
+        prefetchedCommentAuthorProfileIdsRef.current.has(authorProfileId) ||
+        prefetchingCommentAuthorProfileIdsRef.current.has(authorProfileId)
+      ) {
+        return;
+      }
+
+      prefetchingCommentAuthorProfileIdsRef.current.add(authorProfileId);
+
+      void (async () => {
+        let hasPrefetchedPayload = false;
+
+        try {
+          const prefetchedProfile = await bridge.getProfileById(authorProfileId);
+
+          if (prefetchedProfile && typeof prefetchedProfile.profileId === "number") {
+            writeCachedProfileSnapshot(prefetchedProfile);
+            hasPrefetchedPayload = true;
+          }
+        } catch {}
+
+        try {
+          const prefetchedComments = await bridge.getProfileComments(authorProfileId);
+
+          if (Array.isArray(prefetchedComments) && prefetchedComments.length > 0) {
+            writeCachedProfileComments(
+              authorProfileId,
+              prefetchedComments.filter((comment) => comment.pending !== true)
+            );
+            hasPrefetchedPayload = true;
+          }
+        } catch {}
+
+        prefetchingCommentAuthorProfileIdsRef.current.delete(authorProfileId);
+
+        if (hasPrefetchedPayload) {
+          prefetchedCommentAuthorProfileIdsRef.current.add(authorProfileId);
+        }
+      })();
+    });
+  }, [authReady, authStateSettled, authError, comments, profile?.profileId]);
 
   const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
   const isCurrentAccountVerificationLocked = isEmailVerificationLockedForProfile(visibleCurrentUser);
