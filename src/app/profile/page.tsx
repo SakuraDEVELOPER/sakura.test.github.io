@@ -177,6 +177,7 @@ const COMMENT_MEDIA_FILE_ACCEPT = ".png,.jpg,.jpeg,.webp,.gif,.mp4,.webm";
 const PRESENCE_ACTIVE_WINDOW_MS = 90 * 1000;
 const SITE_ONLINE_COUNT_REFRESH_INTERVAL_MS = 20 * 1000;
 const SITE_ONLINE_COUNT_REFRESH_DEBOUNCE_MS = 280;
+const PROFILE_NAV_SCAN_LIMIT = 300;
 const PROFILE_THEME_TIMELINE_UPDATE_STEP_SECONDS = 0.24;
 const STALE_RUNTIME_RECOVERY_STORAGE_KEY = "sakura-stale-runtime-recovery-at";
 const STALE_RUNTIME_RECOVERY_COUNT_STORAGE_KEY = "sakura-stale-runtime-recovery-count";
@@ -1290,6 +1291,13 @@ export default function ProfilePage() {
   const [profileThemeDuration, setProfileThemeDuration] = useState(0);
   const [profileThemeVolume, setProfileThemeVolume] = useState(0.34);
   const [isProfileThemePanelOpen, setIsProfileThemePanelOpen] = useState(false);
+  const [previousProfileId, setPreviousProfileId] = useState<number | null>(null);
+  const [nextProfileId, setNextProfileId] = useState<number | null>(null);
+  const [profileSearchQuery, setProfileSearchQuery] = useState("");
+  const [profileSearchResults, setProfileSearchResults] = useState<UserProfile[]>([]);
+  const [isProfileSearchLoading, setIsProfileSearchLoading] = useState(false);
+  const [profileSearchError, setProfileSearchError] = useState<string | null>(null);
+  const [profileSearchFeedback, setProfileSearchFeedback] = useState<string | null>(null);
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const profileThemeAudioRef = useRef<HTMLAudioElement | null>(null);
   const profileThemeAutoplayAttemptedRef = useRef<string | null>(null);
@@ -1626,6 +1634,61 @@ export default function ProfilePage() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [authReady]);
+
+  useEffect(() => {
+    const activeProfileId = profile?.profileId;
+
+    if (!authReady || !authStateSettled || authError || typeof activeProfileId !== "number") {
+      setPreviousProfileId(null);
+      setNextProfileId(null);
+      return;
+    }
+
+    const bridge = getWindowState().sakuraFirebaseAuth;
+
+    if (!bridge) {
+      setPreviousProfileId(null);
+      setNextProfileId(null);
+      return;
+    }
+
+    let isCancelled = false;
+    const resolveNeighborProfileId = async (startId: number, step: -1 | 1) => {
+      let candidateProfileId = startId + step;
+
+      for (
+        let scanIndex = 0;
+        scanIndex < PROFILE_NAV_SCAN_LIMIT && candidateProfileId > 0;
+        scanIndex += 1, candidateProfileId += step
+      ) {
+        try {
+          const candidateProfile = await bridge.getProfileById(candidateProfileId);
+
+          if (candidateProfile && typeof candidateProfile.profileId === "number") {
+            return candidateProfile.profileId;
+          }
+        } catch (error) {}
+      }
+
+      return null;
+    };
+
+    void (async () => {
+      const [resolvedPreviousProfileId, resolvedNextProfileId] = await Promise.all([
+        resolveNeighborProfileId(activeProfileId, -1),
+        resolveNeighborProfileId(activeProfileId, 1),
+      ]);
+
+      if (!isCancelled) {
+        setPreviousProfileId(resolvedPreviousProfileId);
+        setNextProfileId(resolvedNextProfileId);
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [authReady, authStateSettled, authError, profile?.profileId]);
 
   const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
   const isCurrentAccountVerificationLocked = isEmailVerificationLockedForProfile(visibleCurrentUser);
@@ -4143,6 +4206,116 @@ export default function ProfilePage() {
       profileThemeAudioRef.current.volume = normalizedVolume;
     }
   };
+  const handleProfileSearchSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const bridge = getWindowState().sakuraFirebaseAuth;
+    const rawQuery = profileSearchQuery.trim();
+    const normalizedQuery = rawQuery.replace(/^@+/, "");
+
+    if (!normalizedQuery) {
+      setProfileSearchResults([]);
+      setProfileSearchFeedback(null);
+      setProfileSearchError("Enter UID, login, or username.");
+      return;
+    }
+
+    if (!bridge) {
+      setProfileSearchResults([]);
+      setProfileSearchFeedback(null);
+      setProfileSearchError("Profile search is unavailable right now.");
+      return;
+    }
+
+    setIsProfileSearchLoading(true);
+    setProfileSearchError(null);
+    setProfileSearchFeedback(null);
+
+    try {
+      const collectedProfiles = new Map<string, UserProfile>();
+      const collectProfile = (candidate: UserProfile | null | undefined) => {
+        if (!candidate || typeof candidate.profileId !== "number") {
+          return;
+        }
+
+        const profileKey = candidate.uid || `profile-${candidate.profileId}`;
+
+        if (!collectedProfiles.has(profileKey)) {
+          collectedProfiles.set(profileKey, candidate);
+        }
+      };
+
+      if (/^\d+$/.test(normalizedQuery)) {
+        collectProfile(await bridge.getProfileById(Number.parseInt(normalizedQuery, 10)));
+      } else {
+        const [loginMatches, nameMatch, mentionNameMatch] = await Promise.all([
+          bridge.getProfilesByLoginPrefix(normalizedQuery).catch(() => []),
+          bridge.getProfileByAuthorName(normalizedQuery).catch(() => null),
+          bridge.getProfileByAuthorName(`@${normalizedQuery}`).catch(() => null),
+        ]);
+
+        (Array.isArray(loginMatches) ? loginMatches : []).forEach((candidate) =>
+          collectProfile(candidate)
+        );
+        collectProfile(nameMatch);
+        collectProfile(mentionNameMatch);
+      }
+
+      const loweredQuery = normalizedQuery.toLowerCase();
+      const scoredProfiles = [...collectedProfiles.values()]
+        .map((candidate) => {
+          const login = (candidate.login ?? "").toLowerCase();
+          const displayName = (candidate.displayName ?? "").toLowerCase();
+          const uidText = String(candidate.profileId ?? "");
+          let score = 0;
+
+          if (uidText === normalizedQuery) {
+            score += 180;
+          }
+          if (login === loweredQuery) {
+            score += 140;
+          } else if (login.startsWith(loweredQuery)) {
+            score += 90;
+          } else if (login.includes(loweredQuery)) {
+            score += 40;
+          }
+          if (displayName === loweredQuery) {
+            score += 120;
+          } else if (displayName.startsWith(loweredQuery)) {
+            score += 70;
+          } else if (displayName.includes(loweredQuery)) {
+            score += 30;
+          }
+
+          return { candidate, score };
+        })
+        .sort((left, right) => {
+          if (right.score !== left.score) {
+            return right.score - left.score;
+          }
+
+          return (left.candidate.profileId ?? 0) - (right.candidate.profileId ?? 0);
+        })
+        .map((entry) => entry.candidate);
+
+      setProfileSearchResults(scoredProfiles);
+      setProfileSearchFeedback(
+        scoredProfiles.length
+          ? scoredProfiles.length === 1
+            ? "1 account found."
+            : `${scoredProfiles.length} accounts found.`
+          : "No accounts found."
+      );
+    } catch (error) {
+      setProfileSearchResults([]);
+      setProfileSearchFeedback(null);
+      setProfileSearchError(
+        error instanceof Error ? error.message : "Could not search profiles right now."
+      );
+    } finally {
+      setIsProfileSearchLoading(false);
+    }
+  };
 
   return (
     <main
@@ -4193,7 +4366,13 @@ export default function ProfilePage() {
 
         {activeProfile ? (
           <section className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,64fr)_minmax(0,36fr)] lg:items-start">
-            <div className="w-full self-start overflow-hidden rounded-[34px] border border-[#201517] bg-[#0d0d0d] shadow-[0_0_80px_rgba(255,183,197,0.06)]">
+            <div className="relative w-full self-start overflow-hidden rounded-[34px] border border-[#201517] bg-[#0d0d0d] shadow-[0_0_80px_rgba(255,183,197,0.06)]">
+              {previousProfileId ? <a href={profilePath(previousProfileId)} aria-label="Open previous account" className="absolute left-0 top-[136px] z-20 hidden h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
+                ←
+              </a> : null}
+              {nextProfileId ? <a href={profilePath(nextProfileId)} aria-label="Open next account" className="absolute right-0 top-[136px] z-20 hidden h-11 w-11 translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
+                →
+              </a> : null}
               <div className="border-b border-[#1b1b1b] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.16),transparent_55%)] px-8 py-8">
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                   <div className="flex shrink-0 flex-col items-center gap-3">
@@ -4240,6 +4419,48 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex w-full flex-col gap-6 self-start">
+              <div className="rounded-[32px] border border-[#201517] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.12),transparent_70%),linear-gradient(180deg,#0d0d0d_0%,#090909_100%)] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Navigator</p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  {previousProfileId ? <a href={profilePath(previousProfileId)} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white">
+                    ← Previous
+                  </a> : null}
+                  {nextProfileId ? <a href={profilePath(nextProfileId)} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white">
+                    Next →
+                  </a> : null}
+                  {!previousProfileId && !nextProfileId ? <p className="text-xs leading-relaxed text-gray-500">No adjacent accounts found nearby.</p> : null}
+                </div>
+                <form onSubmit={handleProfileSearchSubmit} className="mt-5">
+                  <label className="block">
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Find Account</span>
+                    <div className="flex items-center gap-2">
+                      <input type="text" value={profileSearchQuery} onChange={(event) => {
+                        setProfileSearchQuery(event.target.value);
+                        setProfileSearchError(null);
+                      }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="UID, login, or username" />
+                      <button type="submit" disabled={isProfileSearchLoading} className="inline-flex shrink-0 items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">
+                        {isProfileSearchLoading ? "..." : "Search"}
+                      </button>
+                    </div>
+                  </label>
+                </form>
+                {profileSearchError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{profileSearchError}</p> : null}
+                {!profileSearchError && profileSearchFeedback ? <p className="mt-3 text-xs leading-relaxed text-gray-500">{profileSearchFeedback}</p> : null}
+                {profileSearchResults.length ? <div className="mt-4 space-y-2">
+                  {profileSearchResults.slice(0, 8).map((candidateProfile) => (
+                    <a key={candidateProfile.uid || `profile-${candidateProfile.profileId}`} href={typeof candidateProfile.profileId === "number" ? profilePath(candidateProfile.profileId) : "#"} className="flex items-center justify-between gap-3 rounded-2xl border border-[#222] bg-[#0b0b0b] px-3 py-2.5 transition hover:border-[#ffb7c5]/35">
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-white">{profileNameOf(candidateProfile)}</span>
+                        <span className="block truncate text-xs text-gray-500">{candidateProfile.login ? `@${candidateProfile.login}` : "No login"}</span>
+                      </span>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-[#b78a95]">
+                        <span aria-hidden="true" className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff9fbd] shadow-[0_0_10px_rgba(255,159,189,0.7)]" />
+                        <span className="whitespace-nowrap">UID: {candidateProfile.profileId}</span>
+                      </span>
+                    </a>
+                  ))}
+                </div> : null}
+              </div>
               {isOwner && activeProfile && (!isProfileControlsOpen || activeProfile.isBanned) ? <div className="rounded-[32px] border border-[#201517] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.14),transparent_72%),linear-gradient(180deg,#0d0d0d_0%,#090909_100%)] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Settings</p>
