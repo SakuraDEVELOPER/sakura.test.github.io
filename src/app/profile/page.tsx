@@ -4145,45 +4145,42 @@ export default function ProfilePage() {
                   {hasActiveProfileAvatar ? <AvatarMedia src={activeProfileAvatarUrl ?? ""} alt={primaryName} decoding="async" className="h-[104px] w-[104px] rounded-[30px] border border-[#2c2023] object-cover shadow-[0_0_30px_rgba(255,183,197,0.14)]" /> : <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[30px] border border-[#2c2023] bg-[#1a1012] text-2xl font-black uppercase text-[#ffb7c5] shadow-[0_0_30px_rgba(255,183,197,0.14)]">{initials}</div>}
                   <span className={`inline-flex min-w-[104px] shrink-0 justify-center rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActiveProfileOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{isActiveProfileOnline ? "Online" : "Offline"}</span>
                   </div>
-                  <div className="min-w-0">
-                    <h1 style={profileHeadlineStyle} className="min-w-0 truncate text-3xl font-black uppercase tracking-tighter">{primaryName}</h1>
-                    {hasUsername ? <p className="mt-2 text-sm font-medium text-[#c7d4cc]">@{activeProfile.login}</p> : isOwner ? <p className="mt-2 text-sm text-gray-500">Login not set yet.</p> : null}
-                    {typeof activeProfile.profileId === "number" ? <div className="mt-3">
-                      <span style={roleBadgeTextStyle} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-[#3a2a31] bg-[#140d11] px-3 py-1 text-[10px] font-bold text-[#ffb7c5]">ID: {activeProfile.profileId}</span>
-                    </div> : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <h1 style={profileHeadlineStyle} className="min-w-0 truncate text-3xl font-black uppercase tracking-tighter">{primaryName}</h1>
+                        {hasUsername ? <p className="mt-2 text-sm font-medium text-[#c7d4cc]">@{activeProfile.login}</p> : isOwner ? <p className="mt-2 text-sm text-gray-500">Login not set yet.</p> : null}
+                        {typeof activeProfile.profileId === "number" ? <div className="mt-3">
+                          <span style={roleBadgeTextStyle} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-[#3a2a31] bg-[#140d11] px-3 py-1 text-[10px] font-bold text-[#ffb7c5]">ID: {activeProfile.profileId}</span>
+                        </div> : null}
+                      </div>
+                      <div
+                        style={metaCardStyle}
+                        className="w-full rounded-[22px] border px-4 py-3 text-center backdrop-blur-sm sm:w-auto sm:min-w-[220px]"
+                      >
+                        <p
+                          style={metaLabelStyle}
+                          className="font-mono text-[10px] uppercase tracking-[0.32em]"
+                        >
+                          Account Created
+                        </p>
+                        <div className="mt-2 flex justify-center">
+                          <span
+                            style={metaValueStyle}
+                            className="inline-flex max-w-full items-center text-[12px] leading-none sm:text-[13px]"
+                          >
+                            {formatTime(activeProfile.creationTime)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                     <div className="mt-4 flex flex-wrap items-center gap-3">
                       {profileRoles.map((role) => <span key={role} title={roleBadgeLabel(role)} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex min-h-[26px] shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 py-1 text-[10px] font-bold"><span aria-hidden="true" className="inline-flex items-center">{renderRoleBadgeText(role)}</span></span>)}
                     </div>
                   </div>
                 </div>
               </div>
-              <div className="px-8 py-6">
-                {[
-                  ["Account Created", formatTime(activeProfile.creationTime)],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    style={metaCardStyle}
-                    className="inline-block max-w-full rounded-[26px] border p-4 text-center backdrop-blur-sm"
-                  >
-                    <p
-                      style={metaLabelStyle}
-                      className="font-mono text-[10px] uppercase tracking-[0.32em]"
-                    >
-                      {label}
-                    </p>
-                    <div className="mt-3 flex justify-center">
-                      <span
-                        style={metaValueStyle}
-                        className="inline-flex max-w-full items-center text-[12px] leading-none sm:text-[13px]"
-                      >
-                        {value}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="px-8 pb-7">
+              <div className="px-8 pt-6 pb-7">
                 <div className="rounded-[26px] border border-[#2f161d] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.1),transparent_58%),linear-gradient(180deg,#0c0a0b_0%,#090909_100%)] p-5 shadow-[0_0_26px_rgba(255,143,177,0.08)]">
                   <div className="flex items-start justify-between gap-4">
                     <div>
