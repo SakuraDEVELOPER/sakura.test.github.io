@@ -4250,10 +4250,10 @@ export default function ProfilePage() {
 
         {activeProfile ? (
           <section className="relative grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,64fr)_minmax(0,36fr)] lg:items-start">
-            {previousProfileId ? <a href={profilePath(previousProfileId)} aria-label="Open previous account" className="absolute left-0 top-[96px] z-0 hidden h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
+            {previousProfileId ? <a href={profilePath(previousProfileId)} aria-label="Open previous account" className="absolute -left-[58px] top-[108px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
               ←
             </a> : null}
-            {nextProfileId ? <a href={profilePath(nextProfileId)} aria-label="Open next account" className="absolute right-0 top-[96px] z-0 hidden h-11 w-11 translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
+            {nextProfileId ? <a href={profilePath(nextProfileId)} aria-label="Open next account" className="absolute -right-[58px] top-[108px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
               →
             </a> : null}
             <div className="relative z-10 w-full self-start overflow-hidden rounded-[34px] border border-[#201517] bg-[#0d0d0d] shadow-[0_0_80px_rgba(255,183,197,0.06)]">
