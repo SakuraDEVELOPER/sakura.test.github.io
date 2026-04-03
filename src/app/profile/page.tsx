@@ -2104,6 +2104,8 @@ export default function ProfilePage() {
       setCurrentUser(snapshot);
     }
 
+    const resolvedSnapshotAvatarUrl = resolveProfileAvatarUrl(snapshot);
+
     setComments((currentComments) =>
       currentComments.map((comment) => {
         const matchesCommentAuthor =
@@ -2116,7 +2118,7 @@ export default function ProfilePage() {
 
         return {
           ...comment,
-          authorPhotoURL: snapshot.photoURL ?? null,
+          authorPhotoURL: resolvedSnapshotAvatarUrl ?? null,
           authorAccentRole: pickCommentAuthorAccentRole(snapshot.roles) ?? comment.authorAccentRole,
         };
       })

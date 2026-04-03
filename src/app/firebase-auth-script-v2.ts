@@ -1394,14 +1394,16 @@
       encodedPath;
   };
   const resolveCommentAuthorPhotoURLForPayload = (profile) => {
+    const storagePhotoURL = resolveSupabaseStoragePublicUrl(profile?.avatarPath);
+
+    if (storagePhotoURL) {
+      return storagePhotoURL;
+    }
+
     const directPhotoURL =
       typeof profile?.photoURL === "string" ? profile.photoURL.trim() : "";
 
-    if (directPhotoURL) {
-      return directPhotoURL;
-    }
-
-    return resolveSupabaseStoragePublicUrl(profile?.avatarPath);
+    return directPhotoURL || null;
   };
   const SUPABASE_PROFILE_SELECT = [
     "auth_user_id",
