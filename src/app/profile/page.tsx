@@ -1291,8 +1291,8 @@ export default function ProfilePage() {
   const [profileThemeDuration, setProfileThemeDuration] = useState(0);
   const [profileThemeVolume, setProfileThemeVolume] = useState(0.34);
   const [isProfileThemePanelOpen, setIsProfileThemePanelOpen] = useState(false);
-  const [previousProfileId, setPreviousProfileId] = useState<number | null>(null);
-  const [nextProfileId, setNextProfileId] = useState<number | null>(null);
+  const [previousProfileId, setPreviousProfileId] = useState<number | null | undefined>(undefined);
+  const [nextProfileId, setNextProfileId] = useState<number | null | undefined>(undefined);
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const profileThemeAudioRef = useRef<HTMLAudioElement | null>(null);
   const profileThemeAutoplayAttemptedRef = useRef<string | null>(null);
@@ -1634,20 +1634,22 @@ export default function ProfilePage() {
     const activeProfileId = profile?.profileId;
 
     if (!authReady || !authStateSettled || authError || typeof activeProfileId !== "number") {
-      setPreviousProfileId(null);
-      setNextProfileId(null);
+      setPreviousProfileId(undefined);
+      setNextProfileId(undefined);
       return;
     }
 
     const bridge = getWindowState().sakuraFirebaseAuth;
 
     if (!bridge) {
-      setPreviousProfileId(null);
-      setNextProfileId(null);
+      setPreviousProfileId(undefined);
+      setNextProfileId(undefined);
       return;
     }
 
     let isCancelled = false;
+    setPreviousProfileId(undefined);
+    setNextProfileId(undefined);
     const resolveNeighborProfileId = async (startId: number, step: -1 | 1) => {
       let candidateProfileId = startId + step;
 
@@ -4250,19 +4252,43 @@ export default function ProfilePage() {
 
         {activeProfile ? (
           <section className="relative grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,64fr)_minmax(0,36fr)] lg:items-start">
-            {previousProfileId ? <a href={profilePath(previousProfileId)} aria-label="Open previous account" className="absolute -left-[58px] top-[34px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
-              ←
-            </a> : null}
-            {nextProfileId ? <a href={profilePath(nextProfileId)} aria-label="Open next account" className="absolute -right-[58px] top-[34px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
-              →
-            </a> : null}
+            {previousProfileId !== null ? (
+              typeof previousProfileId === "number" ? (
+                <a
+                  href={profilePath(previousProfileId)}
+                  aria-label="Open previous account"
+                  className="absolute -left-[58px] top-[18px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
+                >
+                  <span aria-hidden="true">&larr;</span>
+                </a>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -left-[58px] top-[18px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
+                >
+                  <span aria-hidden="true">&larr;</span>
+                </span>
+              )
+            ) : null}
+            {nextProfileId !== null ? (
+              typeof nextProfileId === "number" ? (
+                <a
+                  href={profilePath(nextProfileId)}
+                  aria-label="Open next account"
+                  className="absolute -right-[58px] top-[18px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
+                >
+                  <span aria-hidden="true">&rarr;</span>
+                </a>
+              ) : (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -right-[58px] top-[18px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
+                >
+                  <span aria-hidden="true">&rarr;</span>
+                </span>
+              )
+            ) : null}
             <div className="relative z-10 w-full self-start overflow-hidden rounded-[34px] border border-[#201517] bg-[#0d0d0d] shadow-[0_0_80px_rgba(255,183,197,0.06)]">
-              {false && previousProfileId ? <a href={profilePath(previousProfileId ?? 0)} aria-label="Open previous account" className="absolute left-0 top-[136px] z-20 hidden h-11 w-11 -translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
-                ←
-              </a> : null}
-              {false && nextProfileId ? <a href={profilePath(nextProfileId ?? 0)} aria-label="Open next account" className="absolute right-0 top-[136px] z-20 hidden h-11 w-11 translate-x-1/2 items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] text-lg text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.14)] transition hover:border-[#ffb7c5]/50 hover:text-white lg:inline-flex">
-                →
-              </a> : null}
               <div className="border-b border-[#1b1b1b] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.16),transparent_55%)] px-8 py-8">
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                   <div className="flex shrink-0 flex-col items-center gap-3">
