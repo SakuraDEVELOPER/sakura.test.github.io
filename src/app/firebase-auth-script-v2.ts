@@ -1800,7 +1800,7 @@
         )
     );
 
-    return enrichProfileCommentsWithAuthors(comments);
+    return comments;
   };
 
   window.firebaseConfig = firebaseConfig;
@@ -3255,7 +3255,7 @@
             )
         );
 
-        return enrichProfileCommentsWithAuthors(comments);
+        return comments;
       };
 
       try {

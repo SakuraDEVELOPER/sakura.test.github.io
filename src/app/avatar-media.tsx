@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 export const AVATAR_FILE_ACCEPT =
   ".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm";
@@ -72,6 +72,52 @@ const dataUrlToBlob = (dataUrl: string) => {
   return new Blob([decodeURIComponent(payload)], { type: mimeType });
 };
 
+const avatarVideoSyncAnchorBySource = new Map<string, number>();
+const AVATAR_VIDEO_SYNC_DRIFT_TOLERANCE_SECONDS = 0.28;
+
+const getAvatarVideoSyncAnchor = (source: string) => {
+  const normalizedSource = source.trim();
+
+  if (!normalizedSource) {
+    return Date.now();
+  }
+
+  const existingAnchor = avatarVideoSyncAnchorBySource.get(normalizedSource);
+
+  if (typeof existingAnchor === "number") {
+    return existingAnchor;
+  }
+
+  const nextAnchor = Date.now();
+  avatarVideoSyncAnchorBySource.set(normalizedSource, nextAnchor);
+  return nextAnchor;
+};
+
+const syncAvatarVideoTime = (
+  mediaElement: HTMLVideoElement | null,
+  source: string
+) => {
+  if (!mediaElement || !Number.isFinite(mediaElement.duration) || mediaElement.duration <= 0) {
+    return;
+  }
+
+  const anchor = getAvatarVideoSyncAnchor(source);
+  const elapsedSeconds = Math.max(0, (Date.now() - anchor) / 1000);
+  const expectedTime = elapsedSeconds % mediaElement.duration;
+  const drift = Math.abs(mediaElement.currentTime - expectedTime);
+
+  if (drift > AVATAR_VIDEO_SYNC_DRIFT_TOLERANCE_SECONDS) {
+    try {
+      mediaElement.currentTime = expectedTime;
+    } catch {}
+  }
+
+  const playAttempt = mediaElement.play();
+  if (playAttempt && typeof playAttempt.catch === "function") {
+    playAttempt.catch(() => {});
+  }
+};
+
 type AvatarMediaProps = {
   alt: string;
   className: string;
@@ -111,6 +157,7 @@ export function AvatarMedia({
   const [hasLoadError, setHasLoadError] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
     let objectUrl: string | null = null;
@@ -159,6 +206,23 @@ export function AvatarMedia({
     };
   }, [hasLoadError, retryAttempt]);
 
+  useEffect(() => {
+    if (!isVideoAvatarSource(resolvedSrc) || hasLoadError) {
+      return;
+    }
+
+    const syncPlayback = () => {
+      syncAvatarVideoTime(videoElementRef.current, resolvedSrc);
+    };
+
+    syncPlayback();
+    const intervalId = window.setInterval(syncPlayback, 2200);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [resolvedSrc, renderKey, hasLoadError]);
+
   if (!resolvedSrc || hasLoadError) {
     return (
       <span
@@ -186,6 +250,7 @@ export function AvatarMedia({
           {initialsFromLabel(alt)}
         </span>
         <video
+          ref={videoElementRef}
           key={`${renderKey}:${resolvedSrc}`}
           src={resolvedSrc}
           aria-label={alt}
@@ -200,9 +265,11 @@ export function AvatarMedia({
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
           onLoadedData={() => {
+            syncAvatarVideoTime(videoElementRef.current, resolvedSrc);
             setIsLoaded(true);
           }}
           onCanPlay={() => {
+            syncAvatarVideoTime(videoElementRef.current, resolvedSrc);
             setIsLoaded(true);
           }}
           onError={() => {
