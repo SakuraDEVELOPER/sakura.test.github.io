@@ -4260,7 +4260,7 @@ export default function ProfilePage() {
                         ref={commentTextareaRef}
                         value={commentInput}
                         maxLength={280}
-                        rows={3}
+                        rows={1}
                         onChange={(event) => handleMentionComposerChange("new", event)}
                         onInput={(event) => {
                           syncTextareaHeight(event.currentTarget);
@@ -4270,7 +4270,7 @@ export default function ProfilePage() {
                         onSelect={(event) => handleMentionComposerInteraction("new", event.currentTarget)}
                         onFocus={(event) => handleMentionComposerInteraction("new", event.currentTarget)}
                         onBlur={handleMentionComposerBlur}
-                        className="w-full resize-none overflow-hidden rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
+                        className="w-full resize-none overflow-hidden rounded-2xl border border-[#232323] bg-[#090909] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
                         placeholder={`Write something for ${primaryName}...`}
                       />
                     </label>
