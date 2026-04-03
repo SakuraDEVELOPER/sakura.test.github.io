@@ -1748,17 +1748,21 @@ export default function ProfilePage() {
       return null;
     };
 
-    void (async () => {
-      const [resolvedPreviousProfileId, resolvedNextProfileId] = await Promise.all([
-        resolveNeighborProfileId(activeProfileId, -1),
-        resolveNeighborProfileId(activeProfileId, 1),
-      ]);
-
-      if (!isCancelled) {
-        setPreviousProfileId(resolvedPreviousProfileId);
-        setNextProfileId(resolvedNextProfileId);
+    void resolveNeighborProfileId(activeProfileId, -1).then(
+      (resolvedPreviousProfileId) => {
+        if (!isCancelled) {
+          setPreviousProfileId(resolvedPreviousProfileId);
+        }
       }
-    })();
+    );
+
+    void resolveNeighborProfileId(activeProfileId, 1).then(
+      (resolvedNextProfileId) => {
+        if (!isCancelled) {
+          setNextProfileId(resolvedNextProfileId);
+        }
+      }
+    );
 
     return () => {
       isCancelled = true;
