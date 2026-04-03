@@ -58,6 +58,7 @@ type ProfileComment = {
   mediaSize?: number | null;
   createdAt: string | null;
   updatedAt?: string | null;
+  pending?: boolean;
 };
 
 type CommentMediaPayload = {
@@ -1073,6 +1074,8 @@ const profileNameOf = (user: Pick<UserProfile, "login" | "displayName" | "profil
   (typeof user.profileId === "number" ? `Profile #${user.profileId}` : "Sakura User");
 const nameOf = (user: UserProfile) =>
   profileNameOf(user);
+const createPendingCommentId = () =>
+  `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 const initialsOf = (user: UserProfile) =>
   (nameOf(user) || user.email || (typeof user.profileId === "number" ? `Profile ${user.profileId}` : "SA"))
     .split(/[\s@._-]+/)
@@ -1282,7 +1285,10 @@ export default function ProfilePage() {
       return;
     }
 
-    writeCachedProfileComments(profile.profileId, comments);
+    writeCachedProfileComments(
+      profile.profileId,
+      comments.filter((comment) => comment.pending !== true)
+    );
   }, [profile?.profileId, comments]);
 
   useEffect(() => {
@@ -1782,7 +1788,10 @@ export default function ProfilePage() {
       return;
     }
 
-    writeCachedProfileComments(activeProfile.profileId, comments);
+    writeCachedProfileComments(
+      activeProfile.profileId,
+      comments.filter((comment) => comment.pending !== true)
+    );
   }, [activeProfile?.profileId, comments]);
 
   const applyUpdatedProfileSnapshot = (snapshot: UserProfile | null) => {
@@ -3547,17 +3556,18 @@ export default function ProfilePage() {
     event.preventDefault();
     const bridge = getWindowState().sakuraFirebaseAuth;
     const nextComment = commentInput.trim();
+    const nextCommentMediaFile = commentMediaFile;
 
     if (!bridge || !activeProfile?.profileId) {
       return;
     }
 
-    if (!nextComment && !commentMediaFile) {
+    if (!nextComment && !nextCommentMediaFile) {
       setCommentError("Write a comment or attach media before sending.");
       return;
     }
 
-    if (commentMediaFile && (!isSupabaseConfigured || !visibleCurrentUser?.uid)) {
+    if (nextCommentMediaFile && (!isSupabaseConfigured || !visibleCurrentUser?.uid)) {
       setCommentError(getSupabaseCommentMediaUnavailableMessage());
       return;
     }
@@ -3566,14 +3576,46 @@ export default function ProfilePage() {
     setCommentSuccess(null);
     setIsCommentSubmitting(true);
 
+    const pendingCommentId = createPendingCommentId();
+    const pendingCommentAuthor = visibleCurrentUser ?? currentUser ?? activeProfile;
+    const pendingCommentMediaPreviewUrl = nextCommentMediaFile
+      ? URL.createObjectURL(nextCommentMediaFile)
+      : null;
+    const pendingComment: ProfileComment = {
+      id: pendingCommentId,
+      profileId: activeProfile.profileId,
+      authorUid: pendingCommentAuthor?.uid ?? null,
+      authorProfileId:
+        typeof pendingCommentAuthor?.profileId === "number"
+          ? pendingCommentAuthor.profileId
+          : null,
+      authorName: profileNameOf(pendingCommentAuthor),
+      authorPhotoURL: resolveProfileAvatarUrl(pendingCommentAuthor),
+      authorAccentRole: pickCommentAuthorAccentRole(pendingCommentAuthor.roles) ?? null,
+      message: nextComment,
+      mediaURL: pendingCommentMediaPreviewUrl,
+      mediaType: nextCommentMediaFile?.type ?? null,
+      mediaPath: null,
+      mediaSize: nextCommentMediaFile?.size ?? null,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+      pending: true,
+    };
+    setComments((currentComments) => [pendingComment, ...currentComments]);
+    setCommentInput("");
+    setCommentMediaFile(null);
+    if (commentMediaInputRef.current) {
+      commentMediaInputRef.current.value = "";
+    }
+
     let uploadedMedia: SupabaseCommentMediaUploadResult | null = null;
 
     try {
-      let nextMedia: File | CommentMediaPayload | null = commentMediaFile;
+      let nextMedia: File | CommentMediaPayload | null = nextCommentMediaFile;
 
-      if (commentMediaFile && isSupabaseConfigured && visibleCurrentUser?.uid) {
+      if (nextCommentMediaFile && isSupabaseConfigured && visibleCurrentUser?.uid) {
         uploadedMedia = await uploadSupabaseCommentMedia(
-          commentMediaFile,
+          nextCommentMediaFile,
           visibleCurrentUser.uid
         );
         nextMedia = toCommentMediaPayload(uploadedMedia);
@@ -3584,12 +3626,12 @@ export default function ProfilePage() {
         nextComment,
         nextMedia
       );
-      setComments((currentComments) => [savedComment, ...currentComments.filter((comment) => comment.id !== savedComment.id)]);
-      setCommentInput("");
-      setCommentMediaFile(null);
-      if (commentMediaInputRef.current) {
-        commentMediaInputRef.current.value = "";
-      }
+      setComments((currentComments) => [
+        savedComment,
+        ...currentComments.filter(
+          (comment) => comment.id !== savedComment.id && comment.id !== pendingCommentId
+        ),
+      ]);
       setCommentSuccess("Comment posted.");
     } catch (error) {
       if (uploadedMedia && shouldCleanupUploadedMedia(uploadedMedia)) {
@@ -3598,12 +3640,22 @@ export default function ProfilePage() {
         });
       }
 
+      setComments((currentComments) =>
+        currentComments.filter((comment) => comment.id !== pendingCommentId)
+      );
+      setCommentInput(nextComment);
+      if (nextCommentMediaFile) {
+        setCommentMediaFile(nextCommentMediaFile);
+      }
       setCommentError(
         getErrorCode(error) === "comments/write-denied"
-          ? getCommentWriteDeniedMessage(Boolean(commentMediaFile))
+          ? getCommentWriteDeniedMessage(Boolean(nextCommentMediaFile))
           : getProfileActionErrorMessage(error, "Could not post this comment.")
       );
     } finally {
+      if (pendingCommentMediaPreviewUrl) {
+        URL.revokeObjectURL(pendingCommentMediaPreviewUrl);
+      }
       setIsCommentSubmitting(false);
     }
   };
@@ -4086,8 +4138,9 @@ export default function ProfilePage() {
                       const isConfirmingCommentDelete = confirmingCommentDeleteId === comment.id;
                       const isEditingComment = editingCommentId === comment.id;
                       const isSavingCommentUpdate = isEditingComment && isCommentUpdating;
-                      const showEditAction = canEditComment(comment);
-                      const showDeleteAction = canDeleteComment(comment);
+                      const isPendingComment = comment.pending === true;
+                      const showEditAction = !isPendingComment && canEditComment(comment);
+                      const showDeleteAction = !isPendingComment && canDeleteComment(comment);
                       const commentInitials = initialsFromText(comment.authorName);
                       const resolvedCommentAuthorProfile = resolveCommentAuthorProfile(comment);
                       const resolvedCommentAuthorRole = resolveCommentAuthorRole(comment);
@@ -4102,6 +4155,7 @@ export default function ProfilePage() {
                             <div className="min-w-0">
                               <div className="flex min-w-0 items-center gap-2">
                                 {comment.authorProfileId ? <a href={profilePath(comment.authorProfileId)} style={commentAuthorStyle} className="min-w-0 truncate text-sm font-semibold transition hover:text-white">{comment.authorName}</a> : <p style={commentAuthorStyle} className="min-w-0 truncate text-sm font-semibold">{comment.authorName}</p>}
+                                {!isConfirmingCommentDelete && isPendingComment ? <span className="shrink-0 text-[10px] font-mono uppercase tracking-[0.16em] text-[#ffb7c5]">Sending...</span> : null}
                                 {!isConfirmingCommentDelete && isCommentEdited ? <span className="shrink-0 text-[10px] font-mono uppercase tracking-[0.16em] text-gray-500">Edited</span> : null}
                               </div>
                               {!isConfirmingCommentDelete ? <p className="mt-1 text-xs text-gray-500">{formatTime(comment.createdAt)}</p> : null}
