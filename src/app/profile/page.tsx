@@ -1410,6 +1410,8 @@ export default function ProfilePage() {
   const ownerUsernameInputRef = useRef<HTMLInputElement | null>(null);
   const adminUsernameInputRef = useRef<HTMLInputElement | null>(null);
   const headerProfileSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const prefetchedNeighborProfileIdsRef = useRef<Set<number>>(new Set());
+  const prefetchingNeighborProfileIdsRef = useRef<Set<number>>(new Set());
   const currentUserIdentitySignature = currentUser
     ? `${currentUser.uid}:${currentUser.isAnonymous ? "1" : "0"}:${currentUser.profileId ?? ""}`
     : "guest";
@@ -1808,6 +1810,75 @@ export default function ProfilePage() {
       isCancelled = true;
     };
   }, [authReady, authStateSettled, authError, profile?.profileId]);
+
+  useEffect(() => {
+    if (!authReady || !authStateSettled || authError) {
+      return;
+    }
+
+    const bridge = getWindowState().sakuraFirebaseAuth;
+
+    if (!bridge) {
+      return;
+    }
+
+    const currentProfileId = typeof profile?.profileId === "number" ? profile.profileId : null;
+    const neighborProfileIds = [previousProfileId, nextProfileId].filter(
+      (profileId): profileId is number =>
+        typeof profileId === "number" &&
+        profileId > 0 &&
+        profileId !== currentProfileId
+    );
+
+    neighborProfileIds.forEach((neighborProfileId) => {
+      if (
+        prefetchedNeighborProfileIdsRef.current.has(neighborProfileId) ||
+        prefetchingNeighborProfileIdsRef.current.has(neighborProfileId)
+      ) {
+        return;
+      }
+
+      prefetchingNeighborProfileIdsRef.current.add(neighborProfileId);
+
+      void (async () => {
+        let hasPrefetchedPayload = false;
+
+        try {
+          const prefetchedProfile = await bridge.getProfileById(neighborProfileId);
+
+          if (prefetchedProfile && typeof prefetchedProfile.profileId === "number") {
+            writeCachedProfileSnapshot(prefetchedProfile);
+            hasPrefetchedPayload = true;
+          }
+        } catch {}
+
+        try {
+          const prefetchedComments = await bridge.getProfileComments(neighborProfileId);
+
+          if (Array.isArray(prefetchedComments) && prefetchedComments.length > 0) {
+            writeCachedProfileComments(
+              neighborProfileId,
+              prefetchedComments.filter((comment) => comment.pending !== true)
+            );
+            hasPrefetchedPayload = true;
+          }
+        } catch {}
+
+        prefetchingNeighborProfileIdsRef.current.delete(neighborProfileId);
+
+        if (hasPrefetchedPayload) {
+          prefetchedNeighborProfileIdsRef.current.add(neighborProfileId);
+        }
+      })();
+    });
+  }, [
+    authReady,
+    authStateSettled,
+    authError,
+    profile?.profileId,
+    previousProfileId,
+    nextProfileId,
+  ]);
 
   const visibleCurrentUser = currentUser && !currentUser.isAnonymous ? currentUser : null;
   const isCurrentAccountVerificationLocked = isEmailVerificationLockedForProfile(visibleCurrentUser);
