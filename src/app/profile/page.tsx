@@ -140,8 +140,10 @@ type RuntimeWindow = Window & {
   sakuraStartFirebaseAuth?: () => Promise<unknown> | unknown;
   sakuraFirebaseAuth?: Bridge;
   sakuraFirebaseAuthError?: string;
+  sakuraFirebaseRuntimeVersion?: string;
 };
 
+const FIREBASE_AUTH_RUNTIME_VERSION = "2026-04-03-runtime-v1";
 const AUTH_READY_EVENT = "sakura-auth-ready";
 const AUTH_ERROR_EVENT = "sakura-auth-error";
 const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
@@ -194,6 +196,9 @@ const restoreProfilePathScript = `
 `;
 
 const getWindowState = () => window as RuntimeWindow;
+const hasCurrentFirebaseAuthRuntime = (runtime: RuntimeWindow) =>
+  Boolean(runtime.sakuraFirebaseAuth) &&
+  runtime.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION;
 
 const getAuthBridgeErrorMessage = (event: Event | undefined, fallback: string) => {
   if (typeof window !== "undefined" && getWindowState().sakuraFirebaseAuthError) {
@@ -1085,9 +1090,18 @@ const getClientBootstrap = () => {
   }
 
   return {
-    authReady: typeof window !== "undefined" && Boolean(getWindowState().sakuraFirebaseAuth),
-    authStateSettled: typeof window !== "undefined" && Boolean(getWindowState().sakuraAuthStateSettled),
-    authError: typeof window === "undefined" ? null : getWindowState().sakuraFirebaseAuthError ?? null,
+    authReady:
+      typeof window !== "undefined" && hasCurrentFirebaseAuthRuntime(getWindowState()),
+    authStateSettled:
+      typeof window !== "undefined" &&
+      hasCurrentFirebaseAuthRuntime(getWindowState()) &&
+      Boolean(getWindowState().sakuraAuthStateSettled),
+    authError:
+      typeof window === "undefined" ||
+      (Boolean(getWindowState().sakuraFirebaseRuntimeVersion) &&
+        getWindowState().sakuraFirebaseRuntimeVersion !== FIREBASE_AUTH_RUNTIME_VERSION)
+        ? null
+        : getWindowState().sakuraFirebaseAuthError ?? null,
     currentUser,
     requestedProfileId,
     profile: initialProfile,
@@ -1263,13 +1277,21 @@ export default function ProfilePage() {
     void runtime.sakuraStartFirebaseAuth?.();
     let unsubscribe: () => void = () => {};
     const sync = () => {
-      if (runtime.sakuraFirebaseAuth) {
+      if (hasCurrentFirebaseAuthRuntime(runtime) && runtime.sakuraFirebaseAuth) {
         setAuthReady(true);
         setAuthStateSettled(Boolean(runtime.sakuraAuthStateSettled));
         setAuthError(null);
         setCurrentUser(runtime.sakuraCurrentUserSnapshot ?? null);
         unsubscribe();
         unsubscribe = runtime.sakuraFirebaseAuth.onAuthStateChanged((user) => setCurrentUser(user));
+        return;
+      }
+      if (
+        runtime.sakuraFirebaseRuntimeVersion &&
+        runtime.sakuraFirebaseRuntimeVersion !== FIREBASE_AUTH_RUNTIME_VERSION
+      ) {
+        setAuthReady(false);
+        setAuthStateSettled(false);
         return;
       }
       if (runtime.sakuraFirebaseAuthError) setAuthError(runtime.sakuraFirebaseAuthError);
@@ -1286,7 +1308,12 @@ export default function ProfilePage() {
         )
       );
     const timeoutId = window.setTimeout(() => {
-      if (!getWindowState().sakuraFirebaseAuth && !getWindowState().sakuraFirebaseAuthError)
+      const currentRuntime = getWindowState();
+      if (
+        !hasCurrentFirebaseAuthRuntime(currentRuntime) &&
+        currentRuntime.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION &&
+        !currentRuntime.sakuraFirebaseAuthError
+      )
         setAuthError("Firebase Auth is still loading. Reload the page if this does not clear soon.");
     }, 12000);
     sync();

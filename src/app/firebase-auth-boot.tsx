@@ -9,10 +9,12 @@ type FirebaseBootWindow = Window & {
   sakuraStartFirebaseAuth?: () => Promise<unknown> | unknown;
   sakuraFirebaseRuntimeInjected?: boolean;
   sakuraFirebaseRuntimePromise?: Promise<void> | null;
+  sakuraFirebaseRuntimeVersion?: string;
   sakuraLoadFirebasePresenceRuntime?: () => Promise<unknown>;
 };
 
 const getWindowState = () => window as FirebaseBootWindow;
+const FIREBASE_AUTH_RUNTIME_VERSION = "2026-04-03-runtime-v1";
 const AUTH_ERROR_EVENT = "sakura-auth-error";
 const AUTH_RUNTIME_INSTALLED_EVENT = "sakura-auth-runtime-installed";
 const AUTH_STATE_SETTLED_EVENT = "sakura-auth-state-settled";
@@ -91,6 +93,22 @@ const hasPersistedFirebaseSession = () => {
   return false;
 };
 
+const hasCurrentRuntime = (runtime: FirebaseBootWindow) =>
+  Boolean(runtime.sakuraFirebaseAuth) &&
+  runtime.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION;
+
+const resetStaleRuntime = (runtime: FirebaseBootWindow) => {
+  if (runtime.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION) {
+    return;
+  }
+
+  delete runtime.sakuraFirebaseAuth;
+  delete runtime.sakuraFirebaseAuthError;
+  delete runtime.sakuraFirebaseRuntimeVersion;
+  runtime.sakuraFirebaseRuntimeInjected = false;
+  runtime.sakuraAuthStateSettled = false;
+};
+
 const shouldBootImmediately = () => {
   if (typeof window === "undefined") {
     return false;
@@ -134,7 +152,9 @@ export default function FirebaseAuthBoot() {
     };
 
     const loadRuntime = async () => {
-      if (runtime.sakuraFirebaseAuth) {
+      resetStaleRuntime(runtime);
+
+      if (hasCurrentRuntime(runtime)) {
         return;
       }
 
@@ -156,6 +176,10 @@ export default function FirebaseAuthBoot() {
                 window.removeEventListener(AUTH_RUNTIME_INSTALLED_EVENT, handleInstalled);
               };
               const handleInstalled = () => {
+                if (runtime.sakuraFirebaseRuntimeVersion !== FIREBASE_AUTH_RUNTIME_VERSION) {
+                  return;
+                }
+
                 cleanup();
                 runtime.sakuraFirebaseRuntimeInjected = true;
                 resolve();

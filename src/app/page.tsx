@@ -166,8 +166,11 @@ declare global {
     sakuraStartFirebaseAuth?: () => Promise<unknown> | unknown;
     sakuraFirebaseAuth?: FirebaseAuthBridge;
     sakuraFirebaseAuthError?: string;
+    sakuraFirebaseRuntimeVersion?: string;
   }
 }
+
+const FIREBASE_AUTH_RUNTIME_VERSION = "2026-04-03-runtime-v1";
 
 const requestFirebaseAuthBoot = () => {
   if (typeof window === "undefined") {
@@ -176,6 +179,11 @@ const requestFirebaseAuthBoot = () => {
 
   void window.sakuraStartFirebaseAuth?.();
 };
+
+const hasCurrentFirebaseAuthRuntime = () =>
+  typeof window !== "undefined" &&
+  Boolean(window.sakuraFirebaseAuth) &&
+  window.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION;
 
 const getAuthBridgeErrorMessage = (event: Event | undefined, fallback: string) => {
   if (typeof window !== "undefined" && window.sakuraFirebaseAuthError) {
@@ -713,7 +721,7 @@ function HeaderAuth() {
     );
 
     const syncAuthBridge = () => {
-      if (window.sakuraFirebaseAuth) {
+      if (hasCurrentFirebaseAuthRuntime() && window.sakuraFirebaseAuth) {
         setAuthReady(true);
         setAuthLoadError(null);
         setCurrentUser(window.sakuraCurrentUserSnapshot ?? null);
@@ -724,7 +732,11 @@ function HeaderAuth() {
         return;
       }
 
-      if (window.sakuraFirebaseAuthError) {
+      if (
+        (!window.sakuraFirebaseRuntimeVersion ||
+          window.sakuraFirebaseRuntimeVersion === FIREBASE_AUTH_RUNTIME_VERSION) &&
+        window.sakuraFirebaseAuthError
+      ) {
         setAuthLoadError(window.sakuraFirebaseAuthError);
       }
     };
@@ -763,7 +775,7 @@ function HeaderAuth() {
     };
 
     const timeoutId = window.setTimeout(() => {
-      if (!window.sakuraFirebaseAuth && !window.sakuraFirebaseAuthError) {
+      if (!hasCurrentFirebaseAuthRuntime() && !window.sakuraFirebaseAuthError) {
         setAuthLoadError(
           "Firebase Auth module did not load. Проверьте соединение и настройки Firebase."
         );

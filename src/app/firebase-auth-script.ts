@@ -1,5 +1,6 @@
 ﻿const firebaseModuleScript = `
   (() => {
+    const AUTH_RUNTIME_VERSION = "2026-04-03-runtime-v1";
     let loadPromise;
     const startFirebaseAuth = () => {
       if (loadPromise) {
@@ -4111,6 +4112,7 @@
       return null;
     });
 
+    window.sakuraFirebaseRuntimeVersion = AUTH_RUNTIME_VERSION;
     window.sakuraFirebaseAuth = {
       register: async ({ login, displayName, email, password }) => {
         const credentials = await createUserWithEmailAndPassword(auth, email, password);
@@ -4366,8 +4368,13 @@
       return loadPromise;
     };
 
+    window.sakuraFirebaseRuntimeVersion = AUTH_RUNTIME_VERSION;
     window.sakuraStartFirebaseAuth = startFirebaseAuth;
-    window.dispatchEvent(new CustomEvent("sakura-auth-runtime-installed"));
+    window.dispatchEvent(
+      new CustomEvent("sakura-auth-runtime-installed", {
+        detail: { version: AUTH_RUNTIME_VERSION }
+      })
+    );
     startFirebaseAuth();
   })();
 `;
