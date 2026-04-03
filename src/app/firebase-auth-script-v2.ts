@@ -2828,12 +2828,6 @@
         PROFILE_RUNTIME_CACHE_TTL_MS,
         "profile-by-id:" + profileId,
         async () => {
-          const supabaseProfile = await fetchSupabaseProfileById(profileId);
-
-          if (supabaseProfile) {
-            return supabaseProfile;
-          }
-
           const readProfileDoc = async () =>
             withTimeout(
               findUserByProfileId(profileId),
@@ -2877,6 +2871,12 @@
                 throw error;
               }
             }
+          }
+
+          const supabaseProfile = await fetchSupabaseProfileById(profileId);
+
+          if (supabaseProfile) {
+            return supabaseProfile;
           }
 
           const viewer = await ensureProfileViewer();
@@ -2927,12 +2927,6 @@
         PROFILE_RUNTIME_CACHE_TTL_MS,
         "profile-by-author:" + normalizedAuthorName,
         async () => {
-          const supabaseProfile = await fetchSupabaseProfileByAuthorName(normalizedAuthorName);
-
-          if (supabaseProfile) {
-            return supabaseProfile;
-          }
-
           const readProfileDoc = async () =>
             withTimeout(
               findUserByAuthorName(normalizedAuthorName),
@@ -2976,6 +2970,12 @@
                 throw error;
               }
             }
+          }
+
+          const supabaseProfile = await fetchSupabaseProfileByAuthorName(normalizedAuthorName);
+
+          if (supabaseProfile) {
+            return supabaseProfile;
           }
 
           const viewer = await ensureProfileViewer();
