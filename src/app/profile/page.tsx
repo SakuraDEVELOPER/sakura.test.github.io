@@ -4257,14 +4257,14 @@ export default function ProfilePage() {
                 <a
                   href={profilePath(previousProfileId)}
                   aria-label="Open previous account"
-                  className="absolute -left-[58px] top-[14px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
+                  className="absolute -left-[58px] top-[12px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
                 >
                   <span aria-hidden="true">&larr;</span>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -left-[58px] top-[14px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
+                  className="pointer-events-none absolute -left-[58px] top-[12px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
                 >
                   <span aria-hidden="true">&larr;</span>
                 </span>
@@ -4275,14 +4275,14 @@ export default function ProfilePage() {
                 <a
                   href={profilePath(nextProfileId)}
                   aria-label="Open next account"
-                  className="absolute -right-[58px] top-[14px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
+                  className="absolute -right-[58px] top-[12px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/80 shadow-none transition duration-200 hover:border-[#2b1b1e] hover:bg-[#140d11] hover:text-[#ffb7c5] hover:shadow-[0_0_18px_rgba(255,183,197,0.14)] lg:inline-flex"
                 >
                   <span aria-hidden="true">&rarr;</span>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -right-[58px] top-[14px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
+                  className="pointer-events-none absolute -right-[58px] top-[12px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-transparent bg-transparent text-lg text-[#ffb7c5]/44 lg:inline-flex"
                 >
                   <span aria-hidden="true">&rarr;</span>
                 </span>
