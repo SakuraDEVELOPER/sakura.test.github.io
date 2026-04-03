@@ -1600,7 +1600,8 @@
             comment.profileId === profileId &&
             (
               (typeof comment.message === "string" && comment.message) ||
-              (typeof comment.mediaURL === "string" && comment.mediaURL)
+              (typeof comment.mediaURL === "string" && comment.mediaURL) ||
+              (typeof comment.mediaPath === "string" && comment.mediaPath)
             )
         )
     );
@@ -3032,7 +3033,8 @@
                 comment.profileId === profileId &&
                 (
                   (typeof comment.message === "string" && comment.message) ||
-                  (typeof comment.mediaURL === "string" && comment.mediaURL)
+                  (typeof comment.mediaURL === "string" && comment.mediaURL) ||
+                  (typeof comment.mediaPath === "string" && comment.mediaPath)
                 )
             )
         );
