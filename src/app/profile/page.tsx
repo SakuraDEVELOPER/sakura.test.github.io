@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { AvatarMedia, AVATAR_FILE_ACCEPT } from "../avatar-media";
 import { HeaderSocialLinks } from "../header-social-links";
 import { SiteOnlineBadge } from "../site-online-badge";
@@ -1411,6 +1411,7 @@ export default function ProfilePage() {
   const ownerUsernameInputRef = useRef<HTMLInputElement | null>(null);
   const adminUsernameInputRef = useRef<HTMLInputElement | null>(null);
   const headerProfileSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const headerProfileSearchRequestIdRef = useRef(0);
   const prefetchedNeighborProfileIdsRef = useRef<Set<number>>(new Set());
   const prefetchingNeighborProfileIdsRef = useRef<Set<number>>(new Set());
   const prefetchedCommentAuthorProfileIdsRef = useRef<Set<number>>(new Set());
@@ -3807,6 +3808,8 @@ export default function ProfilePage() {
       const nextIsOpen = !isOpen;
 
       if (!nextIsOpen) {
+        headerProfileSearchRequestIdRef.current += 1;
+        setIsHeaderProfileSearchLoading(false);
         setHeaderProfileSearchError(null);
         setHeaderProfileSearchFeedback(null);
       }
@@ -3815,33 +3818,48 @@ export default function ProfilePage() {
     });
   };
   const closeHeaderProfileSearch = () => {
+    headerProfileSearchRequestIdRef.current += 1;
     setIsHeaderProfileSearchOpen(false);
+    setIsHeaderProfileSearchLoading(false);
     setHeaderProfileSearchError(null);
     setHeaderProfileSearchFeedback(null);
   };
 
-  const handleHeaderProfileSearchSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const runHeaderProfileSearch = useCallback(async (inputQuery: string) => {
     const bridge = getWindowState().sakuraFirebaseAuth;
-    const rawQuery = headerProfileSearchQuery.trim();
+    const rawQuery = inputQuery.trim();
     const normalizedLookup = rawQuery.replace(/^@+/, "");
+    const isUidLookup = /^\d+$/.test(normalizedLookup);
+    const shouldSearchByText = normalizedLookup.length >= 2;
+    const shouldRunSearch = isUidLookup || shouldSearchByText;
+    const requestId = ++headerProfileSearchRequestIdRef.current;
 
     setHeaderProfileSearchError(null);
-    setHeaderProfileSearchFeedback(null);
 
     if (!rawQuery) {
       setHeaderProfileSearchResults([]);
-      setHeaderProfileSearchError("Enter UID, login, or username.");
+      setHeaderProfileSearchFeedback(null);
+      setIsHeaderProfileSearchLoading(false);
+      return;
+    }
+
+    if (!shouldRunSearch) {
+      setHeaderProfileSearchResults([]);
+      setHeaderProfileSearchFeedback("Type at least 2 characters to search.");
+      setIsHeaderProfileSearchLoading(false);
       return;
     }
 
     if (!bridge) {
       setHeaderProfileSearchResults([]);
       setHeaderProfileSearchError("Profile search is unavailable right now.");
+      setHeaderProfileSearchFeedback(null);
+      setIsHeaderProfileSearchLoading(false);
       return;
     }
 
     setIsHeaderProfileSearchLoading(true);
+    setHeaderProfileSearchFeedback("Searching...");
 
     try {
       const resultsByKey = new Map<string, UserProfile>();
@@ -3859,7 +3877,7 @@ export default function ProfilePage() {
         resultsByKey.set(identityKey, profile);
       };
 
-      if (/^\d+$/.test(normalizedLookup)) {
+      if (isUidLookup) {
         const profileId = Number(normalizedLookup);
 
         if (Number.isInteger(profileId) && profileId > 0) {
@@ -3881,6 +3899,10 @@ export default function ProfilePage() {
       }
 
       const resolvedResults = Array.from(resultsByKey.values()).slice(0, 8);
+      if (requestId !== headerProfileSearchRequestIdRef.current) {
+        return;
+      }
+
       setHeaderProfileSearchResults(resolvedResults);
 
       if (resolvedResults.length) {
@@ -3891,12 +3913,49 @@ export default function ProfilePage() {
         setHeaderProfileSearchFeedback(`No accounts found for "${rawQuery}".`);
       }
     } catch (error) {
+      if (requestId !== headerProfileSearchRequestIdRef.current) {
+        return;
+      }
+
       setHeaderProfileSearchResults([]);
+      setHeaderProfileSearchFeedback(null);
       setHeaderProfileSearchError(getProfileActionErrorMessage(error, "Could not search accounts."));
     } finally {
-      setIsHeaderProfileSearchLoading(false);
+      if (requestId === headerProfileSearchRequestIdRef.current) {
+        setIsHeaderProfileSearchLoading(false);
+      }
     }
+  }, []);
+
+  const handleHeaderProfileSearchSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await runHeaderProfileSearch(headerProfileSearchQuery);
   };
+
+  useEffect(() => {
+    if (!isHeaderProfileSearchOpen) {
+      return;
+    }
+
+    const trimmedQuery = headerProfileSearchQuery.trim();
+    if (!trimmedQuery) {
+      headerProfileSearchRequestIdRef.current += 1;
+      setHeaderProfileSearchResults([]);
+      setHeaderProfileSearchError(null);
+      setHeaderProfileSearchFeedback(null);
+      setIsHeaderProfileSearchLoading(false);
+      return;
+    }
+
+    const searchDelayMs = 180;
+    const timeoutId = window.setTimeout(() => {
+      void runHeaderProfileSearch(headerProfileSearchQuery);
+    }, searchDelayMs);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [headerProfileSearchQuery, isHeaderProfileSearchOpen, runHeaderProfileSearch]);
 
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -4724,7 +4783,8 @@ export default function ProfilePage() {
 
                   <form
                     onSubmit={handleHeaderProfileSearchSubmit}
-                    className="mt-4 mx-auto flex w-full max-w-[640px] flex-col gap-3 sm:flex-row sm:items-center"
+                    aria-busy={isHeaderProfileSearchLoading}
+                    className="mt-4 mx-auto w-full max-w-[640px]"
                   >
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Search profiles</span>
@@ -4737,22 +4797,11 @@ export default function ProfilePage() {
                           setHeaderProfileSearchQuery(nextQuery);
                           setHeaderProfileSearchError(null);
                           setHeaderProfileSearchFeedback(null);
-
-                          if (!nextQuery.trim()) {
-                            setHeaderProfileSearchResults([]);
-                          }
                         }}
                         className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
                         placeholder="UID, login, or username"
                       />
                     </label>
-                    <button
-                      type="submit"
-                      disabled={isHeaderProfileSearchLoading}
-                      className="inline-flex h-[46px] shrink-0 items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-6 text-[11px] font-bold uppercase tracking-[0.16em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isHeaderProfileSearchLoading ? "..." : "Search"}
-                    </button>
                   </form>
 
                   {headerProfileSearchError ? (
