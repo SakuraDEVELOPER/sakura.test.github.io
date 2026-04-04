@@ -4820,14 +4820,36 @@ export default function ProfilePage() {
                   aria-label="Open previous account"
                   className="absolute -left-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/80 bg-transparent text-base text-[#ffb7c5]/88 transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white hover:shadow-[0_0_16px_rgba(255,183,197,0.1)] lg:inline-flex"
                 >
-                  <span aria-hidden="true">&larr;</span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute -left-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/45 bg-transparent text-base text-[#ffb7c5]/38 lg:inline-flex"
                 >
-                  <span aria-hidden="true">&larr;</span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
                 </span>
               )
             ) : null}
@@ -4838,14 +4860,36 @@ export default function ProfilePage() {
                   aria-label="Open next account"
                   className="absolute -right-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/80 bg-transparent text-base text-[#ffb7c5]/88 transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white hover:shadow-[0_0_16px_rgba(255,183,197,0.1)] lg:inline-flex"
                 >
-                  <span aria-hidden="true">&rarr;</span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
                   className="pointer-events-none absolute -right-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/45 bg-transparent text-base text-[#ffb7c5]/38 lg:inline-flex"
                 >
-                  <span aria-hidden="true">&rarr;</span>
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
                 </span>
               )
             ) : null}

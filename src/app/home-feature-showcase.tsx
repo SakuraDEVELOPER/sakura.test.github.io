@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { m } from "framer-motion";
 import { useState } from "react";
@@ -95,7 +95,18 @@ export default function HomeFeatureShowcase() {
               aria-label="Previous card"
               className="absolute -left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/24 bg-transparent text-[#ffb7c5]/90 transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] hover:text-white hover:shadow-[0_0_20px_rgba(255,183,197,0.12)] md:-left-8 lg:pointer-events-none lg:-translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
             >
-              ←
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
             </button>
 
             <m.div
@@ -152,7 +163,18 @@ export default function HomeFeatureShowcase() {
               aria-label="Next card"
               className="absolute -right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/24 bg-transparent text-[#ffb7c5]/90 transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] hover:text-white hover:shadow-[0_0_20px_rgba(255,183,197,0.12)] md:-right-8 lg:pointer-events-none lg:translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
             >
-              →
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 18l6-6-6-6" />
+              </svg>
             </button>
           </div>
         </div>
@@ -160,3 +182,5 @@ export default function HomeFeatureShowcase() {
     </section>
   );
 }
+
+
