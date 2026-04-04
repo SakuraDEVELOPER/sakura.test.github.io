@@ -1966,7 +1966,6 @@ export default function Home() {
           />
         </section>
         <SetupSteps />
-        <DownloadSection />
       </div>
       </main>
     </LazyMotion>
@@ -2035,7 +2034,7 @@ function SetupSteps() {
   ];
 
   return (
-    <section className="border-t border-[#1a1a1a] px-10 py-24">
+    <section className="border-t border-[#1a1a1a] px-10 pt-24 pb-8">
       <div className="mx-auto max-w-6xl">
         <h2 className="mb-12 text-center font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">
           Installation Process
@@ -2059,62 +2058,6 @@ function SetupSteps() {
           ))}
         </div>
       </div>
-    </section>
-  );
-}
-
-function DownloadSection() {
-  return (
-    <section
-      id="download"
-      className="flex flex-col items-center border-y border-[#1a1a1a] bg-[#050505] px-10 py-24"
-    >
-      <m.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-        className="flex w-full max-w-4xl flex-col items-center justify-between gap-10 rounded-2xl border border-[#1a1a1a] bg-[#0d0d0d] p-12 md:flex-row"
-      >
-        <div className="flex-1">
-          <h2 className="mb-4 text-3xl font-black uppercase tracking-tighter text-[#ffb7c5]">
-            Ready to dominate?
-          </h2>
-          <p className="mb-6 text-sm leading-relaxed text-gray-500">
-            Download the latest cheat build.
-          </p>
-          <div className="flex items-center gap-6">
-            <div className="flex flex-col">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">
-                Version
-              </span>
-              <span className="cursor-default font-mono text-sm italic text-gray-300 transition-all hover:text-white">
-                0.0.1 beta test
-              </span>
-            </div>
-            <div className="h-8 w-px bg-[#1a1a1a]"></div>
-            <div className="flex flex-col">
-              <span className="font-mono text-[10px] uppercase tracking-widest text-gray-600">
-                Last Update
-              </span>
-              <span className="cursor-default font-mono text-sm italic text-gray-300 transition-all hover:text-white">
-                24.03.2026
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex w-full flex-col gap-3 md:w-auto">
-          <button
-            type="button"
-            disabled
-            aria-disabled="true"
-            className="cursor-not-allowed bg-[#ffb7c5]/70 px-12 py-5 text-center text-sm font-black uppercase text-black/75 shadow-[0_0_30px_rgba(255,183,197,0.12)]"
-          >
-            Soon
-          </button>
-          <span className="text-center font-mono text-[10px] text-gray-600">MD5: 7A9D...F2C1</span>
-        </div>
-      </m.div>
     </section>
   );
 }
