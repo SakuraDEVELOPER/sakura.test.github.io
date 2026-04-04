@@ -4768,7 +4768,7 @@ export default function ProfilePage() {
                   aria-modal="true"
                   aria-label="Profile search"
                   onClick={(event) => event.stopPropagation()}
-                  className="w-full max-w-[760px] rounded-[26px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.14),transparent_62%),#090909] p-4 shadow-[0_0_80px_rgba(0,0,0,0.55)] sm:p-5"
+                  className="w-full max-w-[620px] rounded-[24px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.14),transparent_62%),#090909] p-3.5 shadow-[0_0_72px_rgba(0,0,0,0.55)] sm:p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">Find Account</p>
@@ -4784,7 +4784,7 @@ export default function ProfilePage() {
                   <form
                     onSubmit={handleHeaderProfileSearchSubmit}
                     aria-busy={isHeaderProfileSearchLoading}
-                    className="mt-3 mx-auto w-full max-w-[560px]"
+                    className="mt-3 mx-auto w-full max-w-[500px]"
                   >
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Search profiles</span>
