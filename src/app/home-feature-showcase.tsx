@@ -93,7 +93,7 @@ export default function HomeFeatureShowcase() {
               type="button"
               onClick={goToPrevious}
               aria-label="Previous card"
-              className="absolute -left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/20 bg-[#140f12] text-[#ffb7c5] shadow-[0_0_20px_rgba(255,183,197,0.08)] transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] md:-left-8 lg:pointer-events-none lg:-translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
+              className="absolute -left-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/24 bg-transparent text-[#ffb7c5]/90 transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] hover:text-white hover:shadow-[0_0_20px_rgba(255,183,197,0.12)] md:-left-8 lg:pointer-events-none lg:-translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
             >
               ←
             </button>
@@ -150,7 +150,7 @@ export default function HomeFeatureShowcase() {
               type="button"
               onClick={goToNext}
               aria-label="Next card"
-              className="absolute -right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/20 bg-[#140f12] text-[#ffb7c5] shadow-[0_0_20px_rgba(255,183,197,0.08)] transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] md:-right-8 lg:pointer-events-none lg:translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
+              className="absolute -right-4 z-10 flex h-12 w-12 items-center justify-center rounded-full border border-[#ffb7c5]/24 bg-transparent text-[#ffb7c5]/90 transition-all duration-200 hover:border-[#ffb7c5]/55 hover:bg-[#1c1217] hover:text-white hover:shadow-[0_0_20px_rgba(255,183,197,0.12)] md:-right-8 lg:pointer-events-none lg:translate-x-1 lg:opacity-0 lg:group-hover:pointer-events-auto lg:group-hover:translate-x-0 lg:group-hover:opacity-100 lg:group-focus-within:pointer-events-auto lg:group-focus-within:translate-x-0 lg:group-focus-within:opacity-100"
             >
               →
             </button>

@@ -4818,14 +4818,14 @@ export default function ProfilePage() {
                 <a
                   href={profilePath(previousProfileId)}
                   aria-label="Open previous account"
-                  className="absolute -left-[58px] top-[24px] z-30 hidden h-8 w-11 items-center justify-center rounded-md border border-[#2b1b1e]/80 bg-[#140d11]/85 text-sm text-[#ffb7c5]/88 shadow-[0_0_14px_rgba(255,183,197,0.08)] transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white lg:inline-flex"
+                  className="absolute -left-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/80 bg-transparent text-base text-[#ffb7c5]/88 transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white hover:shadow-[0_0_16px_rgba(255,183,197,0.1)] lg:inline-flex"
                 >
                   <span aria-hidden="true">&larr;</span>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -left-[58px] top-[24px] z-30 hidden h-8 w-11 items-center justify-center rounded-md border border-[#2b1b1e]/45 bg-[#140d11]/60 text-sm text-[#ffb7c5]/38 lg:inline-flex"
+                  className="pointer-events-none absolute -left-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/45 bg-transparent text-base text-[#ffb7c5]/38 lg:inline-flex"
                 >
                   <span aria-hidden="true">&larr;</span>
                 </span>
@@ -4836,14 +4836,14 @@ export default function ProfilePage() {
                 <a
                   href={profilePath(nextProfileId)}
                   aria-label="Open next account"
-                  className="absolute -right-[58px] top-[24px] z-30 hidden h-8 w-11 items-center justify-center rounded-md border border-[#2b1b1e]/80 bg-[#140d11]/85 text-sm text-[#ffb7c5]/88 shadow-[0_0_14px_rgba(255,183,197,0.08)] transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white lg:inline-flex"
+                  className="absolute -right-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/80 bg-transparent text-base text-[#ffb7c5]/88 transition duration-200 hover:border-[#ffb7c5]/45 hover:bg-[#1a1012] hover:text-white hover:shadow-[0_0_16px_rgba(255,183,197,0.1)] lg:inline-flex"
                 >
                   <span aria-hidden="true">&rarr;</span>
                 </a>
               ) : (
                 <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -right-[58px] top-[24px] z-30 hidden h-8 w-11 items-center justify-center rounded-md border border-[#2b1b1e]/45 bg-[#140d11]/60 text-sm text-[#ffb7c5]/38 lg:inline-flex"
+                  className="pointer-events-none absolute -right-[58px] top-[24px] z-30 hidden h-11 w-11 items-center justify-center rounded-full border border-[#2b1b1e]/45 bg-transparent text-base text-[#ffb7c5]/38 lg:inline-flex"
                 >
                   <span aria-hidden="true">&rarr;</span>
                 </span>
