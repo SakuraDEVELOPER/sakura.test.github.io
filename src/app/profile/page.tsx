@@ -4768,7 +4768,7 @@ export default function ProfilePage() {
                   aria-modal="true"
                   aria-label="Profile search"
                   onClick={(event) => event.stopPropagation()}
-                  className="w-full max-w-3xl rounded-[28px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.14),transparent_62%),#090909] p-5 shadow-[0_0_80px_rgba(0,0,0,0.55)] sm:p-6"
+                  className="w-full max-w-[760px] rounded-[26px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.14),transparent_62%),#090909] p-4 shadow-[0_0_80px_rgba(0,0,0,0.55)] sm:p-5"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">Find Account</p>
@@ -4784,7 +4784,7 @@ export default function ProfilePage() {
                   <form
                     onSubmit={handleHeaderProfileSearchSubmit}
                     aria-busy={isHeaderProfileSearchLoading}
-                    className="mt-4 mx-auto w-full max-w-[640px]"
+                    className="mt-3 mx-auto w-full max-w-[560px]"
                   >
                     <label className="min-w-0 flex-1">
                       <span className="sr-only">Search profiles</span>
@@ -4818,10 +4818,34 @@ export default function ProfilePage() {
                           typeof candidateProfile.profileId === "number" ? candidateProfile.profileId : null;
                         const isNavigable = typeof candidateProfileId === "number";
                         const candidateKey = profileSearchIdentityKey(candidateProfile) || `candidate-${index}`;
+                        const candidateDisplayName = profileNameOf(candidateProfile);
+                        const candidateLoginLine = candidateProfile.login
+                          ? `@${candidateProfile.login}`
+                          : "No login";
+                        const candidateRole = deriveVisibleProfileRoles(candidateProfile)[0] ?? "user";
+                        const candidateAvatarUrl = resolveProfileAvatarUrl(candidateProfile);
+                        const candidateInitials = initialsOf(candidateProfile);
                         const candidateBody = <>
-                          <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold text-white">{profileNameOf(candidateProfile)}</span>
-                            <span className="block truncate text-xs text-gray-500">{candidateProfile.login ? `@${candidateProfile.login}` : "No login"}</span>
+                          <span className="min-w-0 flex min-h-0 flex-1 items-center gap-3">
+                            {candidateAvatarUrl ? (
+                              <AvatarMedia
+                                src={candidateAvatarUrl}
+                                alt={candidateDisplayName}
+                                loading="lazy"
+                                decoding="async"
+                                className="h-10 w-10 shrink-0 rounded-2xl border border-[#2a2022] object-cover"
+                              />
+                            ) : (
+                              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[#2a2022] bg-[#171012] text-[11px] font-black uppercase text-[#ffb7c5]">
+                                {candidateInitials}
+                              </span>
+                            )}
+                            <span className="min-w-0">
+                              <span style={roleCommentAuthorStyle(candidateRole)} className="block truncate text-sm font-semibold">
+                                {candidateDisplayName}
+                              </span>
+                              <span className="block truncate text-xs text-gray-500">{candidateLoginLine}</span>
+                            </span>
                           </span>
                           <span className="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-[#b78a95]">
                             <span aria-hidden="true" className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff9fbd] shadow-[0_0_10px_rgba(255,159,189,0.7)]" />
