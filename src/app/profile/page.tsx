@@ -657,11 +657,11 @@ const getCommentEditedBadgeText = (
   }
 
   if (comment.updatedBy === "author") {
-    return "Edit by author";
+    return "Edited by author";
   }
 
   if (comment.updatedBy === "admin") {
-    return "By admin";
+    return "Edited by admin";
   }
 
   return "Edited";
@@ -5276,9 +5276,7 @@ export default function ProfilePage() {
                         </div> : <div className="mt-3 space-y-3">
                           {comment.message ? <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-300">{renderCommentMessageWithMentions(comment.message)}</p> : null}
                           {resolvedCommentMediaURL ? <div className="overflow-hidden rounded-[22px] border border-[#232323] bg-[#050505]">
-                            <a href={resolvedCommentMediaURL} target="_blank" rel="noreferrer" className="block">
-                              <CommentMediaFrame src={resolvedCommentMediaDisplayURL ?? resolvedCommentMediaURL} mediaType={comment.mediaType} alt={`${comment.authorName} comment attachment`} className="block max-h-[360px] w-full object-contain" controls={isCommentVideoMediaType(comment.mediaType)} />
-                            </a>
+                            <CommentMediaFrame src={resolvedCommentMediaDisplayURL ?? resolvedCommentMediaURL} mediaType={comment.mediaType} alt={`${comment.authorName} comment attachment`} className="block max-h-[360px] w-full object-contain" controls={isCommentVideoMediaType(comment.mediaType)} />
                           </div> : null}
                           {isCommentAttachmentUnavailable ? <div className="rounded-[18px] border border-[#4d3024] bg-[linear-gradient(180deg,#1a110d_0%,#120d0a_100%)] px-3 py-2">
                             <p className="text-xs leading-relaxed text-[#f3d2c5]">Attachment unavailable.</p>
