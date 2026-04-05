@@ -2909,7 +2909,17 @@ export default function ProfilePage() {
                   className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] text-[16px] font-bold text-[#ffb7c5] opacity-0 transition hover:border-[#ffb7c5]/40 hover:text-white group-hover:opacity-100"
                   aria-label={`Remove ${profilePreviewName} mention`}
                 >
-                  ?
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6l-12 12" />
+                  </svg>
                 </button>
               </div>
             );
@@ -5161,9 +5171,19 @@ export default function ProfilePage() {
                     <button
                       type="button"
                       onClick={closeHeaderProfileSearch}
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#2d1f24] bg-[#120d10] text-xs font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white"
+                      className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#2d1f24] bg-[#120d10] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white"
                     >
-                      X
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        className="pointer-events-none absolute inset-0 m-auto h-3.5 w-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      >
+                        <path d="M6 6l12 12M18 6l-12 12" />
+                      </svg>
                     </button>
                   </div>
 
@@ -5990,7 +6010,17 @@ export default function ProfilePage() {
                       onClick={() => setIsAdminPanelOpen(false)}
                       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#312228] bg-[#140d11] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white"
                     >
-                      ?
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      >
+                        <path d="M6 6l12 12M18 6l-12 12" />
+                      </svg>
                     </button>
                   </div>
                 </div>
