@@ -5525,6 +5525,17 @@ export default function ProfilePage() {
                           <span>FunPay</span>
                         </a>
                       </div>
+                      {hasActiveSubscriptionRole ? (
+                        <div className="mt-4">
+                          <button
+                            type="button"
+                            disabled
+                            className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black opacity-70"
+                          >
+                            {t("Download", "Скачать")}
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
