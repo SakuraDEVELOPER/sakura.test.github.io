@@ -5457,11 +5457,8 @@ export default function ProfilePage() {
                       <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">{t("Current Subscription", "Текущая подписка")}</p>
                       <p className="mt-3 text-lg font-bold text-white">{subscriptionSummary.title}</p>
                       <p className="mt-3 text-xs leading-relaxed text-gray-400">{subscriptionSummary.description}</p>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-xs text-gray-400">
-                          {t("Payment method", "Способ оплаты")}:{" "}
-                          <span className="font-semibold text-[#ffb7c5]">FunPay</span>
-                        </p>
+                      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                        <span>{t("Payment method", "Способ оплаты")}:</span>
                         <a
                           href={FUNPAY_SUBSCRIPTION_URL}
                           target="_blank"
@@ -5475,7 +5472,7 @@ export default function ProfilePage() {
                             decoding="async"
                             className="h-4 w-4 rounded-sm"
                           />
-                          <span>{t("Buy on FunPay", "Купить на FunPay")}</span>
+                          <span>FunPay</span>
                         </a>
                       </div>
                     </div>
