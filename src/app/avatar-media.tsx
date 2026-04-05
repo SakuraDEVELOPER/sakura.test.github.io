@@ -199,7 +199,7 @@ export function AvatarMedia({
       setIsLoaded(false);
       setRetryAttempt((currentAttempt) => currentAttempt + 1);
       setRenderKey((currentKey) => currentKey + 1);
-    }, 280);
+    }, 150);
 
     return () => {
       window.clearTimeout(retryTimeoutId);
@@ -216,7 +216,7 @@ export function AvatarMedia({
     };
 
     syncPlayback();
-    const intervalId = window.setInterval(syncPlayback, 2200);
+    const intervalId = window.setInterval(syncPlayback, 1000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -261,7 +261,7 @@ export function AvatarMedia({
           playsInline
           preload="auto"
           disablePictureInPicture
-          className={`absolute inset-0 h-full w-full object-cover transition duration-200 ${
+          className={`absolute inset-0 h-full w-full object-cover transition duration-100 ${
             isLoaded ? "opacity-100" : "opacity-0"
           }`}
           onLoadedData={() => {
@@ -299,7 +299,7 @@ export function AvatarMedia({
         title={alt}
         loading={loading}
         decoding={isAnimatedAvatarSource(resolvedSrc) ? undefined : decoding}
-        className={`absolute inset-0 h-full w-full object-cover transition duration-200 ${
+        className={`absolute inset-0 h-full w-full object-cover transition duration-100 ${
           isLoaded ? "opacity-100" : "opacity-0"
         }`}
         onLoad={() => {
