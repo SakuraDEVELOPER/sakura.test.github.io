@@ -14,6 +14,7 @@ import { writeCachedProfileSnapshot } from "@/lib/profile-cache";
 import { writeCachedProfileComments } from "@/lib/profile-comments-cache";
 import { readCachedSiteOnlineCount, writeCachedSiteOnlineCount } from "@/lib/site-online-cache";
 import { getSupabasePublicObjectUrl, getSupabaseRenderedImageUrl } from "@/lib/supabase";
+import { useLocaleText } from "@/lib/ui-locale";
 
 const repoBasePath = "/sakura.github.io";
 const homeLogoStoragePath = process.env.NEXT_PUBLIC_HOME_LOGO_PATH?.trim() || "";
@@ -765,6 +766,7 @@ function SakuraBackground() {
 }
 
 function HeaderAuth() {
+  const { t } = useLocaleText();
   const [mode, setMode] = useState<AuthMode>("login");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [authReady, setAuthReady] = useState(false);
@@ -1120,8 +1122,11 @@ function HeaderAuth() {
       setCurrentUser(snapshot);
       setVerificationSuccess(
         snapshot?.verificationEmailSent
-          ? "Verification email sent again. Check Spam/Junk if it is not in Inbox."
-          : "Email is already verified."
+          ? t(
+              "Verification email sent again. Check Spam/Junk if it is not in Inbox.",
+              "Письмо подтверждения отправлено повторно. Проверьте папку Спам, если его нет во входящих."
+            )
+          : t("Email is already verified.", "Email уже подтвержден.")
       );
     } catch (error) {
       setVerificationError(getFirebaseErrorMessage(error));
@@ -1300,7 +1305,12 @@ function HeaderAuth() {
     }
 
     if (!identifier.trim()) {
-      setSubmitError("Enter your email or login first, then use password recovery.");
+      setSubmitError(
+        t(
+          "Enter your email or login first, then use password recovery.",
+          "Сначала введите email или логин, затем используйте восстановление пароля."
+        )
+      );
       return;
     }
 
@@ -1310,7 +1320,10 @@ function HeaderAuth() {
     try {
       const resetResult = await window.sakuraFirebaseAuth.sendPasswordReset(identifier.trim());
       setFlashMessage(
-        `Password reset email sent to ${resetResult.email}. Check Spam/Junk if it is not in Inbox.`
+        t(
+          `Password reset email sent to ${resetResult.email}. Check Spam/Junk if it is not in Inbox.`,
+          `Письмо для сброса пароля отправлено на ${resetResult.email}. Проверьте папку Спам, если его нет во входящих.`
+        )
       );
     } catch (error) {
       setSubmitError(getFirebaseErrorMessage(error));
@@ -1717,7 +1730,9 @@ function HeaderAuth() {
                       disabled={isPasswordResetSubmitting || isSubmitting || !authReady}
                       className="text-xs text-[#ffb7c5] transition hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isPasswordResetSubmitting ? "Sending reset email..." : "Forgot password?"}
+                      {isPasswordResetSubmitting
+                        ? t("Sending reset email...", "Отправка письма...")
+                        : t("Forgot password?", "Забыли пароль?")}
                     </button>
                   </div>
                 ) : null}
@@ -1795,7 +1810,10 @@ function HeaderAuth() {
                     Verify your email to unlock your profile and use the site.
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-[#d7b9ae]">
-                    If you do not see the email, check your Spam/Junk folder.
+                    {t(
+                      "If you do not see the email, check your Spam/Junk folder.",
+                      "Если письмо не пришло во входящие, проверьте папку Спам."
+                    )}
                   </p>
                 </div>
 

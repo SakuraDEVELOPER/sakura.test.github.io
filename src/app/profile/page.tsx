@@ -23,6 +23,7 @@ import { readCachedAuthSnapshot } from "@/lib/auth-snapshot-cache";
 import { readCachedProfileSnapshot, writeCachedProfileSnapshot } from "@/lib/profile-cache";
 import { readCachedProfileComments, writeCachedProfileComments } from "@/lib/profile-comments-cache";
 import { readCachedSiteOnlineCount, writeCachedSiteOnlineCount } from "@/lib/site-online-cache";
+import { useLocaleText } from "@/lib/ui-locale";
 
 type UserProfile = {
   uid: string;
@@ -1357,6 +1358,7 @@ const getClientBootstrap = () => {
 };
 
 export default function ProfilePage() {
+  const { t } = useLocaleText();
   const router = useRouter();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const adminAvatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -2212,13 +2214,17 @@ export default function ProfilePage() {
   const topProfileRole = profileRoles[0] ?? null;
   const profileHeadlineStyle = roleHeadlineStyle(topProfileRole);
   const isCurrentAccountBanned = visibleCurrentUser?.isBanned === true;
+  const subscriptionStatus = hasActiveSubscriptionRole ? "active" : "inactive";
   const subscriptionSummary = {
-    title: "Cheat Access",
-    status: hasActiveSubscriptionRole ? "Active" : "Inactive",
-    description: "Купите подписку что бы разблокировать все возможности игры с читом",
+    title: t("Cheat Access", "Доступ к читу"),
+    status: subscriptionStatus,
+    description: t(
+      "Buy a subscription to unlock all cheat features in the game.",
+      "Купите подписку, чтобы разблокировать все возможности чита в игре."
+    ),
   };
   const subscriptionBadgeStyle: CSSProperties =
-    subscriptionSummary.status === "Active"
+    subscriptionSummary.status === "active"
       ? {
           borderColor: "#1f7a4d",
           backgroundColor: "#0d1713",
@@ -2237,6 +2243,10 @@ export default function ProfilePage() {
     color: "#ffffff",
     boxShadow: "0 0 16px rgba(255,255,255,0.18)",
   };
+  const subscriptionStatusLabel =
+    subscriptionSummary.status === "active"
+      ? t("Active", "Активна")
+      : t("Inactive", "Неактивна");
   const shouldShowVerificationBanner = Boolean(
     isOwner &&
       !activeProfile?.isBanned &&
@@ -4204,7 +4214,12 @@ export default function ProfilePage() {
         }
       }
 
-      setVerificationSuccess("Verification email sent. Check Spam/Junk if it is not in Inbox.");
+      setVerificationSuccess(
+        t(
+          "Verification email sent. Check Spam/Junk if it is not in Inbox.",
+          "Письмо подтверждения отправлено. Проверьте папку Спам, если его нет во входящих."
+        )
+      );
     } catch (error) {
       setVerificationError(getProfileActionErrorMessage(error, "Could not send verification email."));
     } finally {
@@ -4363,7 +4378,10 @@ export default function ProfilePage() {
     try {
       const resetResult = await bridge.sendPasswordReset(resetIdentifier);
       setPasswordSuccess(
-        `Password reset email sent to ${resetResult.email}. Check Spam/Junk if it is not in Inbox.`
+        t(
+          `Password reset email sent to ${resetResult.email}. Check Spam/Junk if it is not in Inbox.`,
+          `Письмо для сброса пароля отправлено на ${resetResult.email}. Проверьте папку Спам, если его нет во входящих.`
+        )
       );
     } catch (error) {
       setPasswordError(getProfileActionErrorMessage(error, "Could not send password reset email."));
@@ -5146,19 +5164,19 @@ export default function ProfilePage() {
                 <div className="rounded-[26px] border border-[#2f161d] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.1),transparent_58%),linear-gradient(180deg,#0c0a0b_0%,#090909_100%)] p-5 shadow-[0_0_26px_rgba(255,143,177,0.08)]">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Subscription</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Subscription", "Подписка")}</p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                       <span style={{ ...subscriptionBadgeStyle, ...roleBadgeTextStyle }} className="inline-flex shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold">
-                        {subscriptionSummary.status}
+                        {subscriptionStatusLabel}
                       </span>
                       {hasTestPeriodRole ? <span style={{ ...subscriptionTestPeriodBadgeStyle, ...roleBadgeTextStyle }} className="inline-flex shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold">
-                        Test Period
+                        {t("Test Period", "Тестовый период")}
                       </span> : null}
                     </div>
                   </div>
                   <div className="mt-4 rounded-[22px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.08),transparent_62%),#090909] p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">Current Subscription</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">{t("Current Subscription", "Текущая подписка")}</p>
                     <p className="mt-3 text-lg font-bold text-white">{subscriptionSummary.title}</p>
                     <p className="mt-3 text-xs leading-relaxed text-gray-400">{subscriptionSummary.description}</p>
                   </div>
