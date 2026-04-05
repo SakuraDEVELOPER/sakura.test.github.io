@@ -1218,7 +1218,7 @@ function HeaderAuth() {
     }
 
     if (!password) {
-      setSubmitError("Enter your password.");
+      setSubmitError(t("Enter your password.", "Введите пароль."));
       return;
     }
 
@@ -1226,7 +1226,7 @@ function HeaderAuth() {
       const normalizedLogin = loginName.trim().replace(/\s+/g, "");
 
       if (!normalizedLogin) {
-        setSubmitError("Enter a login.");
+        setSubmitError(t("Enter a login.", "Введите логин."));
         return;
       }
 
@@ -1241,7 +1241,7 @@ function HeaderAuth() {
     }
 
     if (mode === "register" && password !== confirmPassword) {
-      setSubmitError("Passwords do not match.");
+      setSubmitError(t("Passwords do not match.", "Пароли не совпадают."));
       return;
     }
 
@@ -1256,7 +1256,7 @@ function HeaderAuth() {
           displayName: profileName.trim(),
           password,
         });
-        setFlashMessage("Google account completed. Login and password are now linked.");
+        setFlashMessage(t("Google account completed. Login and password are now linked.", "Google-аккаунт завершён. Логин и пароль привязаны."));
       } else if (mode === "register") {
         snapshot = await window.sakuraFirebaseAuth.register({
           login: loginName.trim().replace(/\s+/g, ""),
@@ -1266,20 +1266,20 @@ function HeaderAuth() {
         });
         setFlashMessage(
           isEmailVerificationLocked(snapshot)
-            ? "Account created. Verify your email to open the profile and use the account."
-            : "Account created. Signed in automatically."
+            ? t("Account created. Verify your email to open the profile and use the account.", "Аккаунт создан. Подтвердите почту, чтобы открыть профиль и пользоваться аккаунтом.")
+            : t("Account created. Signed in automatically.", "Аккаунт создан. Вход выполнен автоматически.")
         );
       } else {
         snapshot = await window.sakuraFirebaseAuth.login(identifier.trim(), password);
         setFlashMessage(
           isEmailVerificationLocked(snapshot)
-            ? "Email is not verified. Verify your email to open the profile."
-            : "Signed in."
+            ? t("Email is not verified. Verify your email to open the profile.", "Почта не подтверждена. Подтвердите почту, чтобы открыть профиль.")
+            : t("Signed in.", "Вход выполнен.")
         );
       }
 
       if (!snapshot?.login) {
-        setFlashMessage("Signed in. Create a login on your profile.");
+        setFlashMessage(t("Signed in. Create a login on your profile.", "Вход выполнен. Создайте логин в своём профиле."));
       }
 
       closeModal();
@@ -1299,7 +1299,7 @@ function HeaderAuth() {
 
     if (!window.sakuraFirebaseAuth) {
       setSubmitError(
-        authLoadError ?? "Firebase Auth is not ready yet. Wait a few seconds and try again."
+        authLoadError ?? t("Firebase Auth is not ready yet. Wait a few seconds and try again.", "Firebase Auth ещё не готов. Подождите пару секунд и попробуйте снова.")
       );
       return;
     }
@@ -1335,7 +1335,7 @@ function HeaderAuth() {
   const handleLogout = async () => {
     if (!window.sakuraFirebaseAuth) {
       setFlashMessage(
-        authLoadError ?? "Firebase Auth is not ready yet. Wait a few seconds and try again."
+        authLoadError ?? t("Firebase Auth is not ready yet. Wait a few seconds and try again.", "Firebase Auth ещё не готов. Подождите пару секунд и попробуйте снова.")
       );
       return;
     }
@@ -1496,7 +1496,7 @@ function HeaderAuth() {
             onClick={() => openModal("register")}
             className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black shadow-[0_0_25px_rgba(255,183,197,0.14)] transition hover:bg-[#ffc8d3]"
           >
-            Registration
+            {t("Registration", "Регистрация")}
           </button>
         </>
       )}
@@ -1534,22 +1534,37 @@ function HeaderAuth() {
                   </p>
                   <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
                     {isGoogleSetupFlowActive
-                      ? "Complete Google Account"
+                      ? t("Complete Google Account", "Завершить Google-аккаунт")
                       : mode === "register"
-                        ? "Registration"
+                        ? t("Registration", "Регистрация")
                         : t("Login", "Вход")}
                   </h2>
                   <p className="mt-2 text-sm text-gray-400">
                     {isGoogleSetupFlowActive
-                      ? "Choose a login and password to finish Google registration. Until then, the profile stays locked."
+                      ? t(
+                          "Choose a login and password to finish Google registration. Until then, the profile stays locked.",
+                          "Выберите логин и пароль, чтобы завершить регистрацию через Google. До этого профиль остаётся заблокирован."
+                        )
                       : mode === "register"
-                        ? "Create a username for your profile and a separate login for sign-in."
-                        : "You can sign in with your email or login through Firebase Auth."}
+                        ? t(
+                            "Create a username for your profile and a separate login for sign-in.",
+                            "Создайте имя профиля и отдельный логин для входа."
+                          )
+                        : t(
+                            "You can sign in with your email or login through Firebase Auth.",
+                            "Вы можете войти по email или логину через Firebase Auth."
+                          )}
                   </p>
                   <p className="mt-2 hidden text-sm text-gray-400">
                     {mode === "register"
-                      ? "Create a login so it appears in the profile and can be used for sign-in."
-                      : "Sign in with your email or login through Firebase Auth."}
+                      ? t(
+                          "Create a login so it appears in the profile and can be used for sign-in.",
+                          "Создайте логин, чтобы он отображался в профиле и использовался для входа."
+                        )
+                      : t(
+                          "Sign in with your email or login through Firebase Auth.",
+                          "Войдите по email или логину через Firebase Auth."
+                        )}
                   </p>
                 </div>
 
@@ -1586,14 +1601,14 @@ function HeaderAuth() {
                         : "text-gray-400 hover:text-white"
                     }`}
                   >
-                    Registration
+                    {t("Registration", "Регистрация")}
                   </button>
                 </div>
               ) : null}
 
               {!authReady && !authLoadError ? (
                 <div className="mt-5 rounded-2xl border border-[#2b1b1e] bg-[#120d0f] px-4 py-3 text-sm text-[#f2c0cb]">
-                  Connecting Firebase Auth...
+                  {t("Connecting Firebase Auth...", "Подключение Firebase Auth...")}
                 </div>
               ) : null}
 
@@ -1617,20 +1632,20 @@ function HeaderAuth() {
                       height="18"
                       alt="Google"
                     />
-                    <span>{isGoogleSubmitting ? "Connecting Google..." : "Sign in with Google"}</span>
+                    <span>{isGoogleSubmitting ? t("Connecting Google...", "Подключение Google...") : t("Sign in with Google", "Войти через Google")}</span>
                   </button>
 
                   <div className="mt-5 flex items-center gap-3">
                     <div className="h-px flex-1 bg-[#1f1f1f]"></div>
                     <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-600">
-                      or
+                      {t("or", "или")}
                     </span>
                     <div className="h-px flex-1 bg-[#1f1f1f]"></div>
                   </div>
                 </>
               ) : (
                 <div className="mt-5 rounded-2xl border border-[#2b1b1e] bg-[#120d0f] px-4 py-3 text-sm text-[#f2c0cb]">
-                  {visibleUser?.email ? `Google email: ${visibleUser.email}` : "Google account connected."}
+                  {visibleUser?.email ? t(`Google email: ${visibleUser.email}`, `Google-почта: ${visibleUser.email}`) : t("Google account connected.", "Google-аккаунт подключён.")}
                 </div>
               )}
 
@@ -1638,7 +1653,7 @@ function HeaderAuth() {
                 {mode === "register" || isGoogleSetupFlowActive ? (
                   <label className="block">
                     <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                      Username
+                      {t("Username", "Имя профиля")}
                     </span>
                     <input
                       type="text"
@@ -1650,7 +1665,7 @@ function HeaderAuth() {
                       placeholder="Absolute"
                     />
                     <span className="mt-2 block text-xs leading-relaxed text-gray-500">
-                      Username is shown above your login on the profile.
+                      {t("Username is shown above your login on the profile.", "Имя профиля отображается над логином в профиле.")}
                     </span>
                   </label>
                 ) : null}
@@ -1671,10 +1686,10 @@ function HeaderAuth() {
                       placeholder="your_login"
                     />
                     <span className="mt-2 block text-xs leading-relaxed text-gray-500">
-                      Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.
+                      {t("Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.", "Логин без пробелов. Поддерживаются буквы, цифры, `.`, `_` и `-`.")}
                     </span>
                     <span className="mt-2 hidden text-xs leading-relaxed text-gray-500">
-                      Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.
+                      {t("Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.", "Логин без пробелов. Поддерживаются буквы, цифры, `.`, `_` и `-`.")}
                     </span>
                   </label>
                 ) : null}
@@ -1682,7 +1697,7 @@ function HeaderAuth() {
                 {isGoogleSetupFlowActive ? (
                   <label className="block">
                     <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                      Google Email
+                      {t("Google Email", "Google-почта")}
                     </span>
                     <input
                       type="email"
@@ -1694,7 +1709,7 @@ function HeaderAuth() {
                 ) : (
                   <label className="block">
                     <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                      {mode === "register" ? "Email" : "Email or Login"}
+                      {mode === "register" ? t("Email", "Почта") : t("Email or Login", "Почта или логин")}
                     </span>
                     <input
                       type={mode === "register" ? "email" : "text"}
@@ -1711,7 +1726,7 @@ function HeaderAuth() {
 
                 <label className="block">
                   <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                    Password
+                    {t("Password", "Пароль")}
                   </span>
                   <input
                     type="password"
@@ -1719,7 +1734,7 @@ function HeaderAuth() {
                     autoComplete={mode === "register" ? "new-password" : "current-password"}
                     onChange={(event) => setPassword(event.target.value)}
                     className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
-                    placeholder="Minimum 6 characters"
+                    placeholder={t("Minimum 6 characters", "Минимум 6 символов")}
                   />
                 </label>
                 {mode === "login" && !isGoogleSetupFlowActive ? (
@@ -1740,7 +1755,7 @@ function HeaderAuth() {
                 {mode === "register" || isGoogleSetupFlowActive ? (
                   <label className="block">
                     <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">
-                      Confirm Password
+                      {t("Confirm Password", "Подтвердите пароль")}
                     </span>
                     <input
                       type="password"
@@ -1748,7 +1763,7 @@ function HeaderAuth() {
                       autoComplete="new-password"
                       onChange={(event) => setConfirmPassword(event.target.value)}
                       className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
-                      placeholder="Repeat your password"
+                      placeholder={t("Repeat your password", "Повторите пароль")}
                     />
                   </label>
                 ) : null}
@@ -1766,14 +1781,14 @@ function HeaderAuth() {
                 >
                   {isSubmitting
                     ? isGoogleSetupFlowActive
-                      ? "Finishing Google account..."
+                      ? t("Finishing Google account...", "Завершение Google-аккаунта...")
                       : mode === "register"
-                      ? "Creating account..."
+                      ? t("Creating account...", "Создание аккаунта...")
                       : t("Logging in...", "Вход...")
                     : isGoogleSetupFlowActive
-                      ? "Finish Google Account"
+                      ? t("Finish Google Account", "Завершить Google-аккаунт")
                       : mode === "register"
-                      ? "Create Account"
+                      ? t("Create Account", "Создать аккаунт")
                       : t("Login", "Вход")}
                 </button>
               </form>
@@ -1801,13 +1816,13 @@ function HeaderAuth() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">
-                    Email Not Verified
+                    {t("Email Not Verified", "Почта не подтверждена")}
                   </p>
                   <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-                    Verify Your Access
+                    {t("Verify Your Access", "Подтвердите доступ")}
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-[#f3d2c5]">
-                    Verify your email to unlock your profile and use the site.
+                    {t("Verify your email to unlock your profile and use the site.", "Подтвердите почту, чтобы разблокировать профиль и пользоваться сайтом.")}
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-[#d7b9ae]">
                     {t(
@@ -1835,7 +1850,7 @@ function HeaderAuth() {
                   disabled={isVerificationSending || isVerificationRefreshing}
                   className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isVerificationSending ? "Sending..." : "Resend Email"}
+                  {isVerificationSending ? t("Sending...", "Отправка...") : t("Resend Email", "Отправить письмо повторно")}
                 </button>
                 <button
                   type="button"
@@ -1843,7 +1858,7 @@ function HeaderAuth() {
                   disabled={isVerificationRefreshing || isVerificationSending}
                   className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {isVerificationRefreshing ? "Checking..." : "I Verified My Email"}
+                  {isVerificationRefreshing ? t("Checking...", "Проверка...") : t("I Verified My Email", "Я подтвердил почту")}
                 </button>
               </div>
 
@@ -2155,7 +2170,7 @@ function SetupSteps() {
     <section className="border-t border-[#1a1a1a] px-10 pt-24 pb-8">
       <div className="mx-auto max-w-6xl">
         <h2 className="mb-12 text-center font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">
-          Installation Process
+          {t("Installation Process", "Процесс установки")}
         </h2>
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           {steps.map((step, index) => (

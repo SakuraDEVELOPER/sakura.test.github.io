@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
@@ -166,11 +166,11 @@ const PROFILE_PATH_STORAGE_KEY = "sakura-profile-path";
 const CURRENT_PROFILE_ID_STORAGE_KEY = "sakura-current-profile-id";
 const PROFILE_BUILD_MARKER = "role-colors-v61";
 const PROFILE_THEME_TITLE_BY_PROFILE_ID = new Map<number, string>([
-  [1, "Pixies — Where Is My Mind"],
-  [2, "Face — Forever Young"],
+  [1, "Pixies вЂ” Where Is My Mind"],
+  [2, "Face вЂ” Forever Young"],
   [3, "Cyberpunk"],
-  [4, "Pixies — Where Is My Mind"],
-  [5, "Pixies — Where Is My Mind"],
+  [4, "Pixies вЂ” Where Is My Mind"],
+  [5, "Pixies вЂ” Where Is My Mind"],
 ]);
 const COMMENT_MENTION_PATTERN = /@([A-Za-z\u0400-\u04FF0-9._-]{3,24})/g;
 const COMMENT_MENTION_DRAFT_PATTERN = /(^|[\s([{"'`])@([A-Za-z\u0400-\u04FF0-9._-]{2,24})$/;
@@ -697,13 +697,13 @@ const redirectToLocalProfile = (requestedProfileId: number, currentProfileId: nu
 const resolveDateTimeLocale = (locale: UiLocale) => (locale === "ru" ? "ru-RU" : "en-US");
 const formatTime = (value: string | null, locale: UiLocale) => {
   if (!value) {
-    return locale === "ru" ? "Недоступно" : "Not available";
+    return locale === "ru" ? "РќРµРґРѕСЃС‚СѓРїРЅРѕ" : "Not available";
   }
 
   const parsedDate = new Date(value);
 
   if (Number.isNaN(parsedDate.getTime())) {
-    return locale === "ru" ? "Недоступно" : "Not available";
+    return locale === "ru" ? "РќРµРґРѕСЃС‚СѓРїРЅРѕ" : "Not available";
   }
 
   const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -2239,11 +2239,11 @@ export default function ProfilePage() {
   const isCurrentAccountBanned = visibleCurrentUser?.isBanned === true;
   const subscriptionStatus = hasActiveSubscriptionRole ? "active" : "inactive";
   const subscriptionSummary = {
-    title: t("Cheat Access", "Доступ к читу"),
+    title: t("Cheat Access", "Р”РѕСЃС‚СѓРї Рє С‡РёС‚Сѓ"),
     status: subscriptionStatus,
     description: t(
       "Buy a subscription to unlock all cheat features in the game.",
-      "Купите подписку, чтобы разблокировать все возможности чита в игре."
+      "РљСѓРїРёС‚Рµ РїРѕРґРїРёСЃРєСѓ, С‡С‚РѕР±С‹ СЂР°Р·Р±Р»РѕРєРёСЂРѕРІР°С‚СЊ РІСЃРµ РІРѕР·РјРѕР¶РЅРѕСЃС‚Рё С‡РёС‚Р° РІ РёРіСЂРµ."
     ),
   };
   const subscriptionBadgeStyle: CSSProperties =
@@ -2268,8 +2268,8 @@ export default function ProfilePage() {
   };
   const subscriptionStatusLabel =
     subscriptionSummary.status === "active"
-      ? t("Active", "Активна")
-      : t("Inactive", "Неактивна");
+      ? t("Active", "РђРєС‚РёРІРЅР°")
+      : t("Inactive", "РќРµР°РєС‚РёРІРЅР°");
   const shouldShowVerificationBanner = Boolean(
     isOwner &&
       !activeProfile?.isBanned &&
@@ -2864,7 +2864,7 @@ export default function ProfilePage() {
                   className="absolute right-3 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] text-[16px] font-bold text-[#ffb7c5] opacity-0 transition hover:border-[#ffb7c5]/40 hover:text-white group-hover:opacity-100"
                   aria-label={`Remove ${profilePreviewName} mention`}
                 >
-                  ×
+                  Г—
                 </button>
               </div>
             );
@@ -4273,7 +4273,7 @@ export default function ProfilePage() {
       setVerificationSuccess(
         t(
           "Verification email sent. Check Spam/Junk if it is not in Inbox.",
-          "Письмо подтверждения отправлено. Проверьте папку Спам, если его нет во входящих."
+          "РџРёСЃСЊРјРѕ РїРѕРґС‚РІРµСЂР¶РґРµРЅРёСЏ РѕС‚РїСЂР°РІР»РµРЅРѕ. РџСЂРѕРІРµСЂСЊС‚Рµ РїР°РїРєСѓ РЎРїР°Рј, РµСЃР»Рё РµРіРѕ РЅРµС‚ РІРѕ РІС…РѕРґСЏС‰РёС…."
         )
       );
     } catch (error) {
@@ -4436,7 +4436,7 @@ export default function ProfilePage() {
       setPasswordSuccess(
         t(
           `Password reset email sent to ${resetResult.email}. Check Spam/Junk if it is not in Inbox.`,
-          `Письмо для сброса пароля отправлено на ${resetResult.email}. Проверьте папку Спам, если его нет во входящих.`
+          `РџРёСЃСЊРјРѕ РґР»СЏ СЃР±СЂРѕСЃР° РїР°СЂРѕР»СЏ РѕС‚РїСЂР°РІР»РµРЅРѕ РЅР° ${resetResult.email}. РџСЂРѕРІРµСЂСЊС‚Рµ РїР°РїРєСѓ РЎРїР°Рј, РµСЃР»Рё РµРіРѕ РЅРµС‚ РІРѕ РІС…РѕРґСЏС‰РёС….`
         )
       );
     } catch (error) {
@@ -5018,7 +5018,7 @@ export default function ProfilePage() {
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <Link href="/" className="inline-flex items-center justify-center rounded-full border border-[#2a2a2a] bg-[#101010] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-gray-300 transition hover:border-[#4a4a4a] hover:text-white">Home</Link>
                 {visibleCurrentUser?.profileId && !isOwner ? <a href={profilePath(visibleCurrentUser.profileId)} className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#1a1012] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">My Profile</a> : null}
-                {visibleCurrentUser ? <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isLoggingOut ? t("Logging out...", "Выход...") : t("Logout", "Выход")}</button> : null}
+                {visibleCurrentUser ? <button type="button" onClick={handleLogout} disabled={isLoggingOut} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isLoggingOut ? t("Logging out...", "Р’С‹С…РѕРґ...") : t("Logout", "Р’С‹С…РѕРґ")}</button> : null}
                 <div className="lg:hidden">
                   <SiteOnlineBadge count={siteOnlineCount} profileHrefBuilder={profilePath} />
                 </div>
@@ -5255,19 +5255,19 @@ export default function ProfilePage() {
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                   <div className="flex shrink-0 flex-col items-center gap-3">
                   {hasActiveProfileAvatar ? <AvatarMedia src={activeProfileAvatarUrl ?? ""} alt={primaryName} decoding="async" className="h-[104px] w-[104px] rounded-[30px] border border-[#2c2023] object-cover shadow-[0_0_30px_rgba(255,183,197,0.14)]" /> : <div className="flex h-[104px] w-[104px] items-center justify-center rounded-[30px] border border-[#2c2023] bg-[#1a1012] text-2xl font-black uppercase text-[#ffb7c5] shadow-[0_0_30px_rgba(255,183,197,0.14)]">{initials}</div>}
-                  <span style={{ minWidth: 104, height: 30 }} className={`inline-flex shrink-0 items-center justify-center rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActiveProfileOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{isActiveProfileOnline ? t("Online", "Онлайн") : t("Offline", "Оффлайн")}</span>
+                  <span style={{ minWidth: 104, height: 30 }} className={`inline-flex shrink-0 items-center justify-center rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isActiveProfileOnline ? "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]" : "border-[#312228] bg-[#140d11] text-[#ffb7c5]"}`}>{isActiveProfileOnline ? t("Online", "РћРЅР»Р°Р№РЅ") : t("Offline", "РћС„С„Р»Р°Р№РЅ")}</span>
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col sm:min-h-[146px]">
                     <div className="min-w-0">
                       <h1 style={profileHeadlineStyle} className="min-w-0 truncate text-3xl font-black uppercase tracking-tighter">{primaryName}</h1>
-                      {hasUsername ? <p className="mt-1 text-sm font-medium text-[#c7d4cc]">@{activeProfile.login}</p> : isOwner ? <p className="mt-1 text-sm text-gray-500">{t("Login not set yet.", "Логин ещё не задан.")}</p> : null}
+                      {hasUsername ? <p className="mt-1 text-sm font-medium text-[#c7d4cc]">@{activeProfile.login}</p> : isOwner ? <p className="mt-1 text-sm text-gray-500">{t("Login not set yet.", "Р›РѕРіРёРЅ РµС‰С‘ РЅРµ Р·Р°РґР°РЅ.")}</p> : null}
                       {typeof activeProfile.profileId === "number" ? <p className="mt-1 flex max-w-full items-center gap-2 text-[11px] text-[#b78a95]">
                         <span aria-hidden="true" className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff9fbd] shadow-[0_0_10px_rgba(255,159,189,0.7)]" />
                         <span className="truncate">UID: {activeProfile.profileId}</span>
                       </p> : null}
                       <p className={`${typeof activeProfile.profileId === "number" ? "mt-0.5" : "mt-1"} flex max-w-full items-center gap-2 text-[11px] text-[#b78a95]`}>
                         <span aria-hidden="true" className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff9fbd] shadow-[0_0_10px_rgba(255,159,189,0.7)]" />
-                        <span className="truncate">{t("Account created", "Аккаунт создан")} {formatTime(activeProfile.creationTime, locale)}</span>
+                        <span className="truncate">{t("Account created", "РђРєРєР°СѓРЅС‚ СЃРѕР·РґР°РЅ")} {formatTime(activeProfile.creationTime, locale)}</span>
                       </p>
                     </div>
                     <div className="mt-3 flex flex-wrap items-center gap-3 sm:mt-auto">
@@ -5280,19 +5280,19 @@ export default function ProfilePage() {
                 <div className="rounded-[26px] border border-[#2f161d] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.1),transparent_58%),linear-gradient(180deg,#0c0a0b_0%,#090909_100%)] p-5 shadow-[0_0_26px_rgba(255,143,177,0.08)]">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Subscription", "Подписка")}</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Subscription", "РџРѕРґРїРёСЃРєР°")}</p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                       <span style={{ ...subscriptionBadgeStyle, ...roleBadgeTextStyle }} className="inline-flex shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold">
                         {subscriptionStatusLabel}
                       </span>
                       {hasTestPeriodRole ? <span style={{ ...subscriptionTestPeriodBadgeStyle, ...roleBadgeTextStyle }} className="inline-flex shrink-0 rounded-full border px-3 py-1 text-[10px] font-bold">
-                        {t("Test Period", "Тестовый период")}
+                        {t("Test Period", "РўРµСЃС‚РѕРІС‹Р№ РїРµСЂРёРѕРґ")}
                       </span> : null}
                     </div>
                   </div>
                   <div className="mt-4 rounded-[22px] border border-[#24171b] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.08),transparent_62%),#090909] p-4">
-                    <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">{t("Current Subscription", "Текущая подписка")}</p>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#b78a95]">{t("Current Subscription", "РўРµРєСѓС‰Р°СЏ РїРѕРґРїРёСЃРєР°")}</p>
                     <p className="mt-3 text-lg font-bold text-white">{subscriptionSummary.title}</p>
                     <p className="mt-3 text-xs leading-relaxed text-gray-400">{subscriptionSummary.description}</p>
                   </div>
@@ -5306,10 +5306,10 @@ export default function ProfilePage() {
                 <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Navigator</p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   {previousProfileId ? <a href={profilePath(previousProfileId)} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white">
-                    ← Previous
+                    в†ђ Previous
                   </a> : null}
                   {nextProfileId ? <a href={profilePath(nextProfileId)} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white">
-                    Next →
+                    Next в†’
                   </a> : null}
                   {!previousProfileId && !nextProfileId ? <p className="text-xs leading-relaxed text-gray-500">No adjacent accounts found nearby.</p> : null}
                 </div>
@@ -5347,7 +5347,7 @@ export default function ProfilePage() {
               */}
               {isOwner && activeProfile && (!isProfileControlsOpen || activeProfile.isBanned) ? <div className="rounded-[32px] border border-[#201517] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.14),transparent_72%),linear-gradient(180deg,#0d0d0d_0%,#090909_100%)] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Profile Settings", "Настройки профиля")}</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Profile Settings", "РќР°СЃС‚СЂРѕР№РєРё РїСЂРѕС„РёР»СЏ")}</p>
                   {!activeProfile.isBanned ? <button type="button" onClick={() => setIsProfileControlsOpen(true)} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white">
                     Manage Account
                   </button> : null}
@@ -5358,7 +5358,7 @@ export default function ProfilePage() {
               </div> : null}
 
               {(!isOwner || !isProfileControlsOpen || activeProfile?.isBanned) ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
-                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Profile Comments", "Комментарии профиля")}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Profile Comments", "РљРѕРјРјРµРЅС‚Р°СЂРёРё РїСЂРѕС„РёР»СЏ")}</p>
                 {visibleCurrentUser && !isCurrentAccountBanned && !isCurrentAccountVerificationLocked ? (
                   <form onSubmit={handleCommentSubmit} className="mt-5">
                     <label className="block">
@@ -5379,7 +5379,7 @@ export default function ProfilePage() {
                         className="w-full resize-none overflow-hidden rounded-2xl border border-[#232323] bg-[#090909] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
                         placeholder={t(
                           `Write something for ${primaryName}...`,
-                          `Напишите что-нибудь для ${primaryName}...`
+                          `РќР°РїРёС€РёС‚Рµ С‡С‚Рѕ-РЅРёР±СѓРґСЊ РґР»СЏ ${primaryName}...`
                         )}
                       />
                     </label>
@@ -5420,7 +5420,7 @@ export default function ProfilePage() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Recent Messages</p>
                   {isCommentsLoading ? <p className="mt-4 text-sm text-gray-500">Loading comments...</p> : null}
                   {!isCommentsLoading && commentsError ? <p className="mt-4 text-sm leading-relaxed text-[#ff9aa9]">{commentsError}</p> : null}
-                  {!isCommentsLoading && !commentsError && !comments.length ? <p className="mt-4 text-sm text-gray-500">{t("No comments yet.", "Пока нет комментариев.")}</p> : null}
+                  {!isCommentsLoading && !commentsError && !comments.length ? <p className="mt-4 text-sm text-gray-500">{t("No comments yet.", "РџРѕРєР° РЅРµС‚ РєРѕРјРјРµРЅС‚Р°СЂРёРµРІ.")}</p> : null}
                   {!isCommentsLoading && !commentsError && comments.length ? <div className="mt-4 flex flex-col gap-3">
                     {comments.map((comment) => {
                       const isDeletingComment = deletingCommentId === comment.id;
@@ -5579,88 +5579,86 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-6">
               {isOwner && activeProfile && isProfileControlsOpen && !activeProfile.isBanned ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Profile Name</p>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Profile Name", "РРјСЏ РїСЂРѕС„РёР»СЏ")}</p>
                   <button type="button" onClick={() => setIsProfileControlsOpen(false)} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white">
-                    Back
+                    {t("Back", "РќР°Р·Р°Рґ")}
                   </button>
                 </div>
-                <p className="mt-3 text-sm leading-relaxed text-gray-400">This name is shown at the top of your profile. It is separate from your login.</p>
                 <div className="mt-5">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Name</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Name", "РРјСЏ")}</span>
                     <input type="text" value={displayNameInput} maxLength={48} autoComplete="nickname" onChange={(event) => {
                       setDisplayNameInput(event.target.value);
                       setDisplayNameError(null);
                       setDisplayNameSuccess(null);
                     }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="Absolute" />
                   </label>
-                  <p className="mt-2 text-xs leading-relaxed text-gray-500">Displayed above your login in the profile header.</p>
+                  <p className="mt-2 text-xs leading-relaxed text-gray-500">{t("Displayed above your login in the profile header.", "РћС‚РѕР±СЂР°Р¶Р°РµС‚СЃСЏ РЅР°Рґ Р»РѕРіРёРЅРѕРј РІ С€Р°РїРєРµ РїСЂРѕС„РёР»СЏ.")}</p>
                 </div>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={handleDisplayNameSave} disabled={isDisplayNameSaving} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isDisplayNameSaving ? "Saving..." : "Save Name"}</button>
+                  <button type="button" onClick={handleDisplayNameSave} disabled={isDisplayNameSaving} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isDisplayNameSaving ? t("Saving...", "РЎРѕС…СЂР°РЅРµРЅРёРµ...") : t("Save Name", "РЎРѕС…СЂР°РЅРёС‚СЊ РёРјСЏ")}</button>
                 </div>
                 {displayNameError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{displayNameError}</p> : null}
                 {displayNameSuccess ? <p className="mt-3 text-xs leading-relaxed text-[#8ce5b2]">{displayNameSuccess}</p> : null}
               </div> : null}
 
               {isOwner && activeProfile && isProfileControlsOpen && !activeProfile.isBanned ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
-                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{hasUsername ? "Login" : "Create Login"}</p>
-                <p className="mt-3 text-sm leading-relaxed text-gray-400">{hasUsername ? "This login is shown below your profile name and is used for sign-in." : "This account does not have a login yet. Create one so it appears below your profile name and can be used for sign-in."}</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{hasUsername ? t("Login", "Р›РѕРіРёРЅ") : t("Create Login", "РЎРѕР·РґР°С‚СЊ Р»РѕРіРёРЅ")}</p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-400">{hasUsername ? t("This login is shown below your profile name and is used for sign-in.", "Р­С‚РѕС‚ Р»РѕРіРёРЅ РїРѕРєР°Р·С‹РІР°РµС‚СЃСЏ РїРѕРґ РёРјРµРЅРµРј РїСЂРѕС„РёР»СЏ Рё РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ РІС…РѕРґР°.") : t("This account does not have a login yet. Create one so it appears below your profile name and can be used for sign-in.", "РЈ СЌС‚РѕРіРѕ Р°РєРєР°СѓРЅС‚Р° РїРѕРєР° РЅРµС‚ Р»РѕРіРёРЅР°. РЎРѕР·РґР°Р№С‚Рµ РµРіРѕ, С‡С‚РѕР±С‹ РѕРЅ РѕС‚РѕР±СЂР°Р¶Р°Р»СЃСЏ РїРѕРґ РёРјРµРЅРµРј РїСЂРѕС„РёР»СЏ Рё РёСЃРїРѕР»СЊР·РѕРІР°Р»СЃСЏ РґР»СЏ РІС…РѕРґР°.")}</p>
                 <div className="mt-5">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Login</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Login", "Р›РѕРіРёРЅ")}</span>
                     <input ref={ownerUsernameInputRef} type="text" value={usernameInput} minLength={3} maxLength={24} autoComplete="username" onChange={(event) => {
                       setUsernameInput(event.target.value);
                       setUsernameError(null);
                       setUsernameSuccess(null);
                     }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="your_login" />
                   </label>
-                  <p className="mt-2 text-xs leading-relaxed text-gray-500">Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.</p>
+                  <p className="mt-2 text-xs leading-relaxed text-gray-500">{t("Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.", "Р›РѕРіРёРЅ Р±РµР· РїСЂРѕР±РµР»РѕРІ. РџРѕРґРґРµСЂР¶РёРІР°СЋС‚СЃСЏ Р±СѓРєРІС‹, С†РёС„СЂС‹, `.`, `_` Рё `-`.")}</p>
                 </div>
                 {requiresUsernamePasswordConfirmation ? <div className="mt-5">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Current Password</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Current Password", "РўРµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ")}</span>
                     <input type="password" value={usernamePasswordInput} autoComplete="current-password" onChange={(event) => {
                       setUsernamePasswordInput(event.target.value);
                       setUsernameError(null);
                       setUsernameSuccess(null);
-                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="Enter current password" />
+                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder={t("Enter current password", "Р’РІРµРґРёС‚Рµ С‚РµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ")} />
                   </label>
-                  <p className="mt-2 text-xs leading-relaxed text-gray-500">Required before changing the login for password-based accounts.</p>
                 </div> : null}
                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                  <button type="button" onClick={handleUsernameSave} disabled={isUsernameSaving} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isUsernameSaving ? "Saving..." : "Save Login"}</button>
+                  <button type="button" onClick={handleUsernameSave} disabled={isUsernameSaving} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isUsernameSaving ? t("Saving...", "РЎРѕС…СЂР°РЅРµРЅРёРµ...") : t("Save Login", "РЎРѕС…СЂР°РЅРёС‚СЊ Р»РѕРіРёРЅ")}</button>
                 </div>
                 {usernameError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{usernameError}</p> : null}
                 {usernameSuccess ? <p className="mt-3 text-xs leading-relaxed text-[#8ce5b2]">{usernameSuccess}</p> : null}
               </div> : null}
 
               {isOwner && activeProfile && isProfileControlsOpen && !activeProfile.isBanned ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
-                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Password</p>
-                <p className="mt-3 text-sm leading-relaxed text-gray-400">Change password directly here or send a recovery email to the linked mailbox.</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Password", "РџР°СЂРѕР»СЊ")}</p>
+                <p className="mt-3 text-sm leading-relaxed text-gray-400">{t("Change password directly here or send a recovery email to the linked mailbox.", "Р—РґРµСЃСЊ РјРѕР¶РЅРѕ СЃРјРµРЅРёС‚СЊ РїР°СЂРѕР»СЊ РёР»Рё РѕС‚РїСЂР°РІРёС‚СЊ РїРёСЃСЊРјРѕ РґР»СЏ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ РЅР° РїСЂРёРІСЏР·Р°РЅРЅСѓСЋ РїРѕС‡С‚Сѓ.")}</p>
                 {requiresUsernamePasswordConfirmation ? <div className="mt-5">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Current Password</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Current Password", "РўРµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ")}</span>
                     <input type="password" value={currentPasswordInput} autoComplete="current-password" onChange={(event) => {
                       setCurrentPasswordInput(event.target.value);
                       setPasswordError(null);
                       setPasswordSuccess(null);
-                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="Enter current password" />
+                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder={t("Enter current password", "Р’РІРµРґРёС‚Рµ С‚РµРєСѓС‰РёР№ РїР°СЂРѕР»СЊ")} />
                   </label>
-                </div> : <p className="mt-5 text-xs leading-relaxed text-gray-500">This account is not using email/password login. You can still use email recovery below.</p>}
+                </div> : <p className="mt-5 text-xs leading-relaxed text-gray-500">{t("This account is not using email/password login. You can still use email recovery below.", "Р­С‚РѕС‚ Р°РєРєР°СѓРЅС‚ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚ РІС…РѕРґ РїРѕ email/РїР°СЂРѕР»СЋ. РќРёР¶Рµ РІСЃС‘ СЂР°РІРЅРѕ РґРѕСЃС‚СѓРїРЅРѕ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ РїРѕ РїРѕС‡С‚Рµ.")}</p>}
                 {requiresUsernamePasswordConfirmation ? <div className="mt-4">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">New Password</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("New Password", "РќРѕРІС‹Р№ РїР°СЂРѕР»СЊ")}</span>
                     <input type="password" value={newPasswordInput} autoComplete="new-password" onChange={(event) => {
                       setNewPasswordInput(event.target.value);
                       setPasswordError(null);
                       setPasswordSuccess(null);
-                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="Minimum 6 characters" />
+                    }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder={t("Minimum 6 characters", "РњРёРЅРёРјСѓРј 6 СЃРёРјРІРѕР»РѕРІ")} />
                   </label>
                 </div> : null}
                 {requiresUsernamePasswordConfirmation ? <div className="mt-4">
                   <label className="block">
-                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Confirm New Password</span>
+                    <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Confirm New Password", "РџРѕРґС‚РІРµСЂРґРёС‚Рµ РЅРѕРІС‹Р№ РїР°СЂРѕР»СЊ")}</span>
                     <input type="password" value={confirmNewPasswordInput} autoComplete="new-password" onChange={(event) => {
                       setConfirmNewPasswordInput(event.target.value);
                       setPasswordError(null);
@@ -5668,10 +5666,10 @@ export default function ProfilePage() {
                     }} className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55" placeholder="Repeat new password" />
                   </label>
                 </div> : null}
-                <p className="mt-3 text-xs leading-relaxed text-gray-500">Recovery emails may arrive in Spam/Junk.</p>
+                <p className="mt-3 text-xs leading-relaxed text-gray-500">{t("Recovery emails may arrive in Spam/Junk.", "РџРёСЃСЊРјР° РґР»СЏ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ РјРѕРіСѓС‚ РїРѕРїР°СЃС‚СЊ РІ РЎРїР°Рј.")}</p>
                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                  {requiresUsernamePasswordConfirmation ? <button type="button" onClick={handlePasswordSave} disabled={isPasswordSaving || isPasswordResetSending} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isPasswordSaving ? "Saving..." : "Save Password"}</button> : null}
-                  <button type="button" onClick={handlePasswordResetRequest} disabled={isPasswordResetSending || isPasswordSaving || !activeProfile.email} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">{isPasswordResetSending ? "Sending..." : "Send Reset Email"}</button>
+                  {requiresUsernamePasswordConfirmation ? <button type="button" onClick={handlePasswordSave} disabled={isPasswordSaving || isPasswordResetSending} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">{isPasswordSaving ? t("Saving...", "РЎРѕС…СЂР°РЅРµРЅРёРµ...") : t("Save Password", "РЎРѕС…СЂР°РЅРёС‚СЊ РїР°СЂРѕР»СЊ")}</button> : null}
+                  <button type="button" onClick={handlePasswordResetRequest} disabled={isPasswordResetSending || isPasswordSaving || !activeProfile.email} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">{isPasswordResetSending ? t("Sending...", "РћС‚РїСЂР°РІРєР°...") : t("Send Reset Email", "РћС‚РїСЂР°РІРёС‚СЊ РїРёСЃСЊРјРѕ СЃР±СЂРѕСЃР°")}</button>
                 </div>
                 {passwordError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{passwordError}</p> : null}
                 {passwordSuccess ? <p className="mt-3 text-xs leading-relaxed text-[#8ce5b2]">{passwordSuccess}</p> : null}
@@ -5698,7 +5696,7 @@ export default function ProfilePage() {
                       normalizedDraftRoles.length === 1 &&
                       normalizeRoleName(role) === "user";
 
-                    return <button key={role} type="button" title={roleBadgeLabel(role)} onClick={() => removeRole(role)} disabled={isLastUserRole || isRolesSaving} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-60"><span aria-hidden="true" className="inline-flex items-center">{renderRoleBadgeText(role)}</span><span className="ml-2 text-[14px] leading-none">×</span></button>;
+                    return <button key={role} type="button" title={roleBadgeLabel(role)} onClick={() => removeRole(role)} disabled={isLastUserRole || isRolesSaving} style={{ ...roleBadgeStyle(role), ...roleBadgeTextStyle }} className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-60"><span aria-hidden="true" className="inline-flex items-center">{renderRoleBadgeText(role)}</span><span className="ml-2 text-[14px] leading-none">Г—</span></button>;
                   })}</div>
                 </div>
                 <div className="mt-5">
@@ -5714,15 +5712,15 @@ export default function ProfilePage() {
               </div> : null}
 
               {isOwner && isProfileControlsOpen && !activeProfile?.isBanned ? <div className="rounded-[32px] border border-[#201517] bg-[#0d0d0d] px-7 py-7 shadow-[0_0_60px_rgba(255,183,197,0.06)]">
-                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Avatar</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Avatar", "РђРІР°С‚Р°СЂ")}</p>
                 <div className="mt-5 rounded-[24px] border border-[#1d1d1d] bg-[#090909] p-4">
-                  <p className="text-sm font-semibold text-white">{hasActiveProfileAvatar ? "Custom Avatar" : "Generated Avatar"}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-gray-400">Upload, replace, or delete your avatar here. PNG, JPG, and WEBP are available to all users. GIF, MP4, and WEBM require a higher profile tier.</p>
+                  <p className="text-sm font-semibold text-white">{hasActiveProfileAvatar ? t("Custom Avatar", "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёР№ Р°РІР°С‚Р°СЂ") : t("Generated Avatar", "РЎРіРµРЅРµСЂРёСЂРѕРІР°РЅРЅС‹Р№ Р°РІР°С‚Р°СЂ")}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-gray-400">{t("Upload, replace, or delete your avatar here. PNG, JPG, and WEBP are available to all users. GIF, MP4, and WEBM require a higher profile tier.", "Р—РґРµСЃСЊ РјРѕР¶РЅРѕ Р·Р°РіСЂСѓР·РёС‚СЊ, Р·Р°РјРµРЅРёС‚СЊ РёР»Рё СѓРґР°Р»РёС‚СЊ Р°РІР°С‚Р°СЂ. PNG, JPG Рё WEBP РґРѕСЃС‚СѓРїРЅС‹ РІСЃРµРј РїРѕР»СЊР·РѕРІР°С‚РµР»СЏРј. GIF, MP4 Рё WEBM С‚СЂРµР±СѓСЋС‚ Р±РѕР»РµРµ РІС‹СЃРѕРєРѕРіРѕ СѓСЂРѕРІРЅСЏ РїСЂРѕС„РёР»СЏ.")}</p>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={isAvatarUploading || isAvatarDeleting} className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60">
-                      {isAvatarUploading ? "Uploading..." : hasActiveProfileAvatar ? "Replace Avatar" : "Upload Avatar"}
+                      {isAvatarUploading ? t("Uploading...", "Р—Р°РіСЂСѓР·РєР°...") : hasActiveProfileAvatar ? t("Replace Avatar", "Р—Р°РјРµРЅРёС‚СЊ Р°РІР°С‚Р°СЂ") : t("Upload Avatar", "Р—Р°РіСЂСѓР·РёС‚СЊ Р°РІР°С‚Р°СЂ")}
                     </button>
-                    {hasActiveProfileAvatar ? <button type="button" onClick={handleAvatarDelete} disabled={isAvatarUploading || isAvatarDeleting} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">{isAvatarDeleting ? "Deleting..." : "Delete Avatar"}</button> : null}
+                    {hasActiveProfileAvatar ? <button type="button" onClick={handleAvatarDelete} disabled={isAvatarUploading || isAvatarDeleting} className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60">{isAvatarDeleting ? t("Deleting...", "РЈРґР°Р»РµРЅРёРµ...") : t("Delete Avatar", "РЈРґР°Р»РёС‚СЊ Р°РІР°С‚Р°СЂ")}</button> : null}
                     <input ref={avatarInputRef} type="file" accept={AVATAR_FILE_ACCEPT} onChange={handleAvatarChange} className="hidden" />
                   </div>
                   {avatarError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{avatarError}</p> : null}
@@ -5852,7 +5850,7 @@ export default function ProfilePage() {
                     : "border-[#ffb7c5]/35 bg-[#140d11] text-[#ffb7c5] hover:border-[#ffb7c5]/60"
                 }`}
               >
-                🌸
+                рџЊё
               </button>
             ) : null}
           </div> : null}
@@ -5868,12 +5866,12 @@ export default function ProfilePage() {
                 <div className="border-b border-[#1c1c1c] bg-[radial-gradient(circle_at_top,rgba(255,183,197,0.16),transparent_60%)] px-6 py-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">Admin Panel</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-[#ffb7c5]">{t("Admin Panel", "РђРґРјРёРЅ-РїР°РЅРµР»СЊ")}</p>
                       <p className="mt-3 text-sm leading-relaxed text-gray-300">
-                        Root controls for profile #{activeProfile.profileId ?? "?"}.
+                        {t(`Root controls for profile #${activeProfile.profileId ?? "?"}.`, `Root-РЅР°СЃС‚СЂРѕР№РєРё РїСЂРѕС„РёР»СЏ #${activeProfile.profileId ?? "?"}.`)}
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
-                        Managing {primaryName}{hasUsername ? ` · @${activeProfile.login}` : ""}
+                        {t("Managing", "Управление")} {primaryName}{hasUsername ? ` · @${activeProfile.login}` : ""}
                       </p>
                     </div>
                     <button
@@ -5881,7 +5879,7 @@ export default function ProfilePage() {
                       onClick={() => setIsAdminPanelOpen(false)}
                       className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#312228] bg-[#140d11] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white"
                     >
-                      ×
+                      Г—
                     </button>
                   </div>
                 </div>
@@ -5890,12 +5888,12 @@ export default function ProfilePage() {
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Status</p>
+                          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Status", "Статус")}</p>
                           <p className="mt-2 text-sm font-semibold text-white">
-                            {isTargetBanned ? "Account is banned" : "Account is active"}
+                            {isTargetBanned ? t("Account is banned", "Аккаунт заблокирован") : t("Account is active", "Аккаунт активен")}
                           </p>
                           {activeProfile.bannedAt ? (
-                            <p className="mt-1 text-xs text-gray-500">{t("Updated", "Обновлено")} {formatTime(activeProfile.bannedAt, locale)}</p>
+                            <p className="mt-1 text-xs text-gray-500">{t("Updated", "РћР±РЅРѕРІР»РµРЅРѕ")} {formatTime(activeProfile.bannedAt, locale)}</p>
                           ) : null}
                         </div>
                         <span
@@ -5905,7 +5903,7 @@ export default function ProfilePage() {
                               : "border-[#1f3b2f] bg-[#0d1713] text-[#8ce5b2]"
                           }`}
                         >
-                          {isTargetBanned ? "Banned" : "Active"}
+                          {isTargetBanned ? t("Banned", "Заблокирован") : t("Active", "Активен")}
                         </span>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -5919,12 +5917,12 @@ export default function ProfilePage() {
                               : "border-[#ff5a54]/35 bg-[#ff5a54] text-black hover:bg-[#ff746f]"
                           }`}
                         >
-                          {isBanSaving ? "Saving..." : isTargetBanned ? "Unban Account" : "Ban Account"}
+                          {isBanSaving ? t("Saving...", "Сохранение...") : isTargetBanned ? t("Unban Account", "Разблокировать аккаунт") : t("Ban Account", "Заблокировать аккаунт")}
                         </button>
                       </div>
                       {isAdminSelfTarget && !isTargetBanned ? (
                         <p className="mt-3 text-xs leading-relaxed text-gray-500">
-                          Self-ban is blocked to prevent losing access to your root account.
+                          {t("Self-ban is blocked to prevent losing access to your root account.", "Самоблокировка запрещена, чтобы вы не потеряли доступ к root-аккаунту.")}
                         </p>
                       ) : null}
                       {banError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{banError}</p> : null}
@@ -5934,20 +5932,20 @@ export default function ProfilePage() {
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Email Verification</p>
+                          <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Email Verification", "Подтверждение почты")}</p>
                           <p className="mt-2 text-sm font-semibold text-white">
                             {targetVerificationStatus === "no-email"
-                              ? "No email attached"
+                              ? t("No email attached", "Почта не привязана")
                               : targetVerificationStatus === "locked"
-                                ? "Verification required"
+                                ? t("Verification required", "Требуется подтверждение")
                                 : targetVerificationStatus === "verified"
-                                  ? "Email verified"
-                                  : "State unknown"}
+                                  ? t("Email verified", "Почта подтверждена")
+                                  : t("State unknown", "Статус неизвестен")}
                           </p>
                           {activeProfile.email ? (
                             <p className="mt-1 text-xs text-gray-500">{activeProfile.email}</p>
                           ) : (
-                            <p className="mt-1 text-xs text-gray-500">This account does not have a stored email.</p>
+                            <p className="mt-1 text-xs text-gray-500">{t("This account does not have a stored email.", "У этого аккаунта нет сохранённой почты.")}</p>
                           )}
                         </div>
                         <span
@@ -5962,12 +5960,12 @@ export default function ProfilePage() {
                           }`}
                         >
                           {targetVerificationStatus === "no-email"
-                            ? "Unavailable"
+                            ? t("Unavailable", "Недоступно")
                             : targetVerificationStatus === "locked"
-                              ? "Locked"
+                              ? t("Locked", "Заблокировано")
                               : targetVerificationStatus === "verified"
-                                ? "Verified"
-                                : "Unknown"}
+                                ? t("Verified", "Подтверждено")
+                                : t("Unknown", "Неизвестно")}
                         </span>
                       </div>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -5986,15 +5984,15 @@ export default function ProfilePage() {
                           }`}
                         >
                           {isAdminVerificationSaving
-                            ? "Saving..."
+                            ? t("Saving...", "Сохранение...")
                             : isTargetVerificationLocked || targetVerificationStatus === "unknown"
-                              ? "Mark Verified"
-                              : "Revoke Verification"}
+                              ? t("Mark Verified", "Отметить подтверждённой")
+                              : t("Revoke Verification", "Отозвать подтверждение")}
                         </button>
                       </div>
                       {isAdminSelfTarget && isTargetVerified ? (
                         <p className="mt-3 text-xs leading-relaxed text-gray-500">
-                          Self-revoke is blocked to prevent losing access to your own root account.
+                          {t("Self-revoke is blocked to prevent losing access to your own root account.", "Самоотзыв запрещён, чтобы вы не потеряли доступ к своему root-аккаунту.")}
                         </p>
                       ) : null}
                       {adminVerificationError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{adminVerificationError}</p> : null}
@@ -6002,9 +6000,9 @@ export default function ProfilePage() {
                     </section>
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Password Recovery</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Password Recovery", "Восстановление пароля")}</p>
                       <p className="mt-3 text-xs leading-relaxed text-gray-400">
-                        Send a reset link to the linked email address for this account.
+                        {t("Send a reset link to the linked email address for this account.", "Отправьте ссылку для сброса на привязанную почту этого аккаунта.")}
                       </p>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
@@ -6013,7 +6011,7 @@ export default function ProfilePage() {
                           disabled={isAdminPasswordResetSending || isAccountDeleting}
                           className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isAdminPasswordResetSending ? "Sending..." : "Send Reset Link"}
+                          {isAdminPasswordResetSending ? t("Sending...", "Отправка...") : t("Send Reset Link", "Отправить ссылку сброса")}
                         </button>
                       </div>
                       {adminPasswordResetError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{adminPasswordResetError}</p> : null}
@@ -6021,9 +6019,9 @@ export default function ProfilePage() {
                     </section>
 
                     <section className="rounded-[24px] border border-[#3b1e24] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#ff9aa9]">Danger Zone</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-[#ff9aa9]">{t("Danger Zone", "Опасная зона")}</p>
                       <p className="mt-3 text-xs leading-relaxed text-gray-400">
-                        Account deletion is available only for the current signed-in account.
+                        {t("Account deletion is available only for the current signed-in account.", "Удаление аккаунта доступно только для текущего авторизованного аккаунта.")}
                       </p>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
@@ -6032,21 +6030,21 @@ export default function ProfilePage() {
                           disabled={!isAdminSelfTarget || isAccountDeleting || isAdminPasswordResetSending}
                           className="inline-flex items-center justify-center rounded-full border border-[#ff5a54]/35 bg-[#ff5a54] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ff746f] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isAccountDeleting ? "Deleting..." : "Delete Account"}
+                          {isAccountDeleting ? t("Deleting...", "Удаление...") : t("Delete Account", "Удалить аккаунт")}
                         </button>
                       </div>
                       {!isAdminSelfTarget ? (
                         <p className="mt-3 text-xs leading-relaxed text-gray-500">
-                          Open your own profile to use account deletion.
+                          {t("Open your own profile to use account deletion.", "Откройте свой профиль, чтобы использовать удаление аккаунта.")}
                         </p>
                       ) : null}
                       {deleteAccountError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{deleteAccountError}</p> : null}
                     </section>
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Profile Name</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Profile Name", "Имя профиля")}</p>
                       <label className="mt-4 block">
-                        <span className="mb-2 block text-xs text-gray-500">Displayed name</span>
+                        <span className="mb-2 block text-xs text-gray-500">{t("Displayed name", "Отображаемое имя")}</span>
                         <input
                           type="text"
                           value={displayNameInput}
@@ -6068,7 +6066,7 @@ export default function ProfilePage() {
                           disabled={isDisplayNameSaving}
                           className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isDisplayNameSaving ? "Saving..." : "Save Name"}
+                          {isDisplayNameSaving ? t("Saving...", "Сохранение...") : t("Save Name", "Сохранить имя")}
                         </button>
                       </div>
                       {displayNameError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{displayNameError}</p> : null}
@@ -6076,9 +6074,9 @@ export default function ProfilePage() {
                     </section>
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Login</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Login", "Логин")}</p>
                       <label className="mt-4 block">
-                        <span className="mb-2 block text-xs text-gray-500">Sign-in login</span>
+                        <span className="mb-2 block text-xs text-gray-500">{t("Sign-in login", "Логин для входа")}</span>
                         <input
                           ref={adminUsernameInputRef}
                           type="text"
@@ -6095,7 +6093,7 @@ export default function ProfilePage() {
                           placeholder="your_login"
                         />
                       </label>
-                      <p className="mt-2 text-xs leading-relaxed text-gray-500">Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.</p>
+                      <p className="mt-2 text-xs leading-relaxed text-gray-500">{t("Login without spaces. Letters, numbers, `.`, `_`, and `-` are supported.", "Логин без пробелов. Поддерживаются буквы, цифры, `.`, `_` и `-`.")}</p>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
                           type="button"
@@ -6103,7 +6101,7 @@ export default function ProfilePage() {
                           disabled={isUsernameSaving}
                           className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isUsernameSaving ? "Saving..." : "Save Login"}
+                          {isUsernameSaving ? t("Saving...", "Сохранение...") : t("Save Login", "Сохранить логин")}
                         </button>
                       </div>
                       {usernameError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{usernameError}</p> : null}
@@ -6111,9 +6109,9 @@ export default function ProfilePage() {
                     </section>
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Roles</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Roles", "Роли")}</p>
                       <div className="mt-4">
-                        <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Assigned</p>
+                        <p className="text-xs uppercase tracking-[0.22em] text-gray-500">{t("Assigned", "Назначены")}</p>
                         <div className="mt-3 flex flex-wrap gap-3">
                           {normalizedDraftRoles.map((role) => {
                             const isLastUserRole =
@@ -6131,14 +6129,14 @@ export default function ProfilePage() {
                                 className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-bold disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 <span aria-hidden="true" className="inline-flex items-center">{renderRoleBadgeText(role)}</span>
-                                <span className="ml-2 text-[14px] leading-none">×</span>
+                                <span className="ml-2 text-[14px] leading-none">Г—</span>
                               </button>
                             );
                           })}
                         </div>
                       </div>
                       <div className="mt-5">
-                        <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Available</p>
+                        <p className="text-xs uppercase tracking-[0.22em] text-gray-500">{t("Available", "Доступны")}</p>
                         <div className="mt-3 flex flex-wrap gap-3">
                           {availableRoleOptions.map((role) => (
                             <button
@@ -6163,7 +6161,7 @@ export default function ProfilePage() {
                           disabled={isRolesSaving || !hasRoleChanges}
                           className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isRolesSaving ? "Saving..." : "Save Roles"}
+                          {isRolesSaving ? t("Saving...", "Сохранение...") : t("Save Roles", "Сохранить роли")}
                         </button>
                         <button
                           type="button"
@@ -6171,7 +6169,7 @@ export default function ProfilePage() {
                           disabled={isRolesSaving || !hasRoleChanges}
                           className="inline-flex items-center justify-center rounded-full border border-[#2b1b1e] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Reset
+                          {t("Reset", "Сбросить")}
                         </button>
                       </div>
                       {rolesError ? <p className="mt-3 text-xs leading-relaxed text-[#ff9aa9]">{rolesError}</p> : null}
@@ -6179,8 +6177,8 @@ export default function ProfilePage() {
                     </section>
 
                     <section className="rounded-[24px] border border-[#1d1d1d] bg-[#0d0d0d] p-5">
-                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">Avatar</p>
-                      <p className="mt-3 text-xs leading-relaxed text-gray-400">Upload, replace, or delete the avatar for this account. PNG, JPG, and WEBP are available to all users. GIF, MP4, and WEBM require a higher profile tier.</p>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-gray-500">{t("Avatar", "Аватар")}</p>
+                      <p className="mt-3 text-xs leading-relaxed text-gray-400">{t("Upload, replace, or delete the avatar for this account. PNG, JPG, and WEBP are available to all users. GIF, MP4, and WEBM require a higher profile tier.", "Здесь можно загрузить, заменить или удалить аватар этого аккаунта. PNG, JPG и WEBP доступны всем пользователям. GIF, MP4 и WEBM требуют более высокого уровня профиля.")}</p>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
                           type="button"
@@ -6188,7 +6186,7 @@ export default function ProfilePage() {
                           disabled={isAvatarUploading || isAvatarDeleting}
                           className="inline-flex items-center justify-center rounded-full border border-[#ffb7c5]/30 bg-[#ffb7c5] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-black transition hover:bg-[#ffc8d3] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isAvatarUploading ? "Uploading..." : hasActiveProfileAvatar ? "Replace Avatar" : "Upload Avatar"}
+                          {isAvatarUploading ? t("Uploading...", "Загрузка...") : hasActiveProfileAvatar ? t("Replace Avatar", "Заменить аватар") : t("Upload Avatar", "Загрузить аватар")}
                         </button>
                         {hasActiveProfileAvatar ? (
                           <button
@@ -6197,7 +6195,7 @@ export default function ProfilePage() {
                             disabled={isAvatarUploading || isAvatarDeleting}
                             className="inline-flex items-center justify-center rounded-full border border-[#3a2a31] bg-[#140d11] px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {isAvatarDeleting ? "Deleting..." : "Delete Avatar"}
+                            {isAvatarDeleting ? t("Deleting...", "Удаление...") : t("Delete Avatar", "Удалить аватар")}
                           </button>
                         ) : null}
                         <input
