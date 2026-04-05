@@ -119,6 +119,13 @@ const firebaseModuleScript = `
     "forever-young",
     "cyberpunk",
   ]);
+  const SPOTIFY_THEME_ENTITY_TYPES = new Set([
+    "track",
+    "album",
+    "playlist",
+    "episode",
+    "show",
+  ]);
   const profileByIdRuntimeCache = new Map();
   const profileByAuthorRuntimeCache = new Map();
   const profilesByPrefixRuntimeCache = new Map();
@@ -617,7 +624,77 @@ const firebaseModuleScript = `
     typeof value === "string"
       ? value.trim().replace(/\\s+/g, " ").slice(0, DISPLAY_NAME_MAX_LENGTH)
       : "";
+  const parseSpotifyThemeSongSelection = (value) => {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const trimmedValue = value.trim();
+
+    if (!trimmedValue) {
+      return null;
+    }
+
+    const spotifyTokenMatch = trimmedValue.match(
+      /^spotify:(track|album|playlist|episode|show):([A-Za-z0-9]{8,64})$/i
+    );
+
+    if (spotifyTokenMatch) {
+      const entityType = spotifyTokenMatch[1].toLowerCase();
+      const id = spotifyTokenMatch[2];
+
+      return SPOTIFY_THEME_ENTITY_TYPES.has(entityType) ? { entityType, id } : null;
+    }
+
+    try {
+      const parsedUrl = new URL(trimmedValue);
+      const host = parsedUrl.hostname.toLowerCase();
+
+      if (host !== "open.spotify.com" && host !== "play.spotify.com") {
+        return null;
+      }
+
+      const pathSegments = parsedUrl.pathname
+        .split("/")
+        .map((segment) => segment.trim())
+        .filter(Boolean);
+
+      if (!pathSegments.length) {
+        return null;
+      }
+
+      if (/^intl-[a-z]{2}$/i.test(pathSegments[0] || "")) {
+        pathSegments.shift();
+      }
+
+      if ((pathSegments[0] || "").toLowerCase() === "embed") {
+        pathSegments.shift();
+      }
+
+      const entityType = (pathSegments[0] || "").toLowerCase();
+      const rawId = pathSegments[1] || "";
+      const id = rawId.split("?")[0].trim();
+
+      if (!SPOTIFY_THEME_ENTITY_TYPES.has(entityType)) {
+        return null;
+      }
+
+      if (!/^[A-Za-z0-9]{8,64}$/.test(id)) {
+        return null;
+      }
+
+      return { entityType, id };
+    } catch {
+      return null;
+    }
+  };
   const normalizeProfileThemeSongKey = (value) => {
+    const spotifySelection = parseSpotifyThemeSongSelection(value);
+
+    if (spotifySelection) {
+      return \`spotify:\${spotifySelection.entityType}:\${spotifySelection.id}\`;
+    }
+
     const normalizedKey =
       typeof value === "string"
         ? value

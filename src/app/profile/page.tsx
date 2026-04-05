@@ -195,6 +195,16 @@ const PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID = new Map<number, string>([
   [4, "where-is-my-mind"],
   [5, "where-is-my-mind"],
 ]);
+const SPOTIFY_THEME_ENTITY_TYPES = ["track", "album", "playlist", "episode", "show"] as const;
+type SpotifyThemeEntityType = (typeof SPOTIFY_THEME_ENTITY_TYPES)[number];
+const SPOTIFY_THEME_ENTITY_TYPE_SET = new Set<SpotifyThemeEntityType>(SPOTIFY_THEME_ENTITY_TYPES);
+const SPOTIFY_THEME_ENTITY_LABEL: Record<SpotifyThemeEntityType, string> = {
+  track: "Track",
+  album: "Album",
+  playlist: "Playlist",
+  episode: "Episode",
+  show: "Show",
+};
 const COMMENT_MENTION_PATTERN = /@([A-Za-z\u0400-\u04FF0-9._-]{3,24})/g;
 const COMMENT_MENTION_DRAFT_PATTERN = /(^|[\s([{"'`])@([A-Za-z\u0400-\u04FF0-9._-]{2,24})$/;
 const COMMENT_MENTION_TOKEN_CHARACTER_PATTERN = /[A-Za-z\u0400-\u04FF0-9._-]/;
@@ -240,7 +250,85 @@ const restoreProfilePathScript = `
 `;
 
 const getWindowState = () => window as RuntimeWindow;
+const parseSpotifyThemeSongSelection = (
+  value: unknown
+): { entityType: SpotifyThemeEntityType; id: string } | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue) {
+    return null;
+  }
+
+  const spotifyTokenMatch = trimmedValue.match(
+    /^spotify:(track|album|playlist|episode|show):([A-Za-z0-9]{8,64})$/i
+  );
+
+  if (spotifyTokenMatch) {
+    const entityType = spotifyTokenMatch[1].toLowerCase() as SpotifyThemeEntityType;
+    const id = spotifyTokenMatch[2];
+
+    return SPOTIFY_THEME_ENTITY_TYPE_SET.has(entityType) ? { entityType, id } : null;
+  }
+
+  try {
+    const parsedUrl = new URL(trimmedValue);
+    const host = parsedUrl.hostname.toLowerCase();
+
+    if (host !== "open.spotify.com" && host !== "play.spotify.com") {
+      return null;
+    }
+
+    const pathSegments = parsedUrl.pathname
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean);
+
+    if (!pathSegments.length) {
+      return null;
+    }
+
+    if (/^intl-[a-z]{2}$/i.test(pathSegments[0] ?? "")) {
+      pathSegments.shift();
+    }
+
+    if ((pathSegments[0] ?? "").toLowerCase() === "embed") {
+      pathSegments.shift();
+    }
+
+    const rawEntityType = (pathSegments[0] ?? "").toLowerCase() as SpotifyThemeEntityType;
+    const rawEntityId = pathSegments[1] ?? "";
+    const entityId = rawEntityId.split("?")[0].trim();
+
+    if (!SPOTIFY_THEME_ENTITY_TYPE_SET.has(rawEntityType)) {
+      return null;
+    }
+
+    if (!/^[A-Za-z0-9]{8,64}$/.test(entityId)) {
+      return null;
+    }
+
+    return { entityType: rawEntityType, id: entityId };
+  } catch {
+    return null;
+  }
+};
+const buildSpotifyThemeSongKey = (entityType: SpotifyThemeEntityType, id: string) =>
+  `spotify:${entityType}:${id}`;
+const buildSpotifyThemeEmbedUrl = (entityType: SpotifyThemeEntityType, id: string) =>
+  `https://open.spotify.com/embed/${entityType}/${id}?utm_source=generator`;
+const buildSpotifyThemeOpenUrl = (entityType: SpotifyThemeEntityType, id: string) =>
+  `https://open.spotify.com/${entityType}/${id}`;
 const normalizeProfileThemeSongKey = (value: unknown): string | null => {
+  const spotifySelection = parseSpotifyThemeSongSelection(value);
+
+  if (spotifySelection) {
+    return buildSpotifyThemeSongKey(spotifySelection.entityType, spotifySelection.id);
+  }
+
   const normalizedKey =
     typeof value === "string"
       ? value
@@ -1468,6 +1556,7 @@ export default function ProfilePage() {
   const [adminSubscriptionError, setAdminSubscriptionError] = useState<string | null>(null);
   const [adminSubscriptionSuccess, setAdminSubscriptionSuccess] = useState<string | null>(null);
   const [adminThemeSongInput, setAdminThemeSongInput] = useState("");
+  const [adminSpotifyWidgetInput, setAdminSpotifyWidgetInput] = useState("");
   const [isAdminThemeSongSaving, setIsAdminThemeSongSaving] = useState(false);
   const [adminThemeSongError, setAdminThemeSongError] = useState<string | null>(null);
   const [adminThemeSongSuccess, setAdminThemeSongSuccess] = useState<string | null>(null);
@@ -2166,22 +2255,35 @@ export default function ProfilePage() {
   const profileThemeProfileId =
     typeof activeProfile?.profileId === "number" ? activeProfile.profileId : null;
   const profileThemeStoredSongKey = normalizeProfileThemeSongKey(activeProfile?.themeSongKey);
+  const profileThemeSpotifySelection = parseSpotifyThemeSongSelection(profileThemeStoredSongKey);
   const profileThemeDefaultSongKey =
     typeof profileThemeProfileId === "number"
       ? PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID.get(profileThemeProfileId) ?? null
       : null;
-  const profileThemeResolvedSongKey = profileThemeStoredSongKey ?? profileThemeDefaultSongKey;
-  const profileThemeSelection = profileThemeResolvedSongKey
+  const profileThemeResolvedSongKey =
+    profileThemeSpotifySelection ? profileThemeStoredSongKey : (profileThemeStoredSongKey ?? profileThemeDefaultSongKey);
+  const profileThemeSelection = profileThemeSpotifySelection
+    ? null
+    : profileThemeResolvedSongKey
     ? PROFILE_THEME_BY_KEY.get(profileThemeResolvedSongKey) ?? null
+    : null;
+  const profileThemeSpotifyEmbedUrl = profileThemeSpotifySelection
+    ? buildSpotifyThemeEmbedUrl(profileThemeSpotifySelection.entityType, profileThemeSpotifySelection.id)
+    : null;
+  const profileThemeSpotifyOpenUrl = profileThemeSpotifySelection
+    ? buildSpotifyThemeOpenUrl(profileThemeSpotifySelection.entityType, profileThemeSpotifySelection.id)
     : null;
   const profileThemeSongSrc =
     typeof profileThemeProfileId === "number" ? profileThemeSelection?.src ?? null : null;
-  const profileThemeTitle = profileThemeSelection?.title ?? null;
+  const profileThemeTitle = profileThemeSpotifySelection
+    ? `Spotify ${SPOTIFY_THEME_ENTITY_LABEL[profileThemeSpotifySelection.entityType]}`
+    : profileThemeSelection?.title ?? null;
   const profileThemeSongKey =
     profileThemeProfileId && profileThemeResolvedSongKey
       ? `${profileThemeProfileId}:${profileThemeResolvedSongKey}`
       : null;
   const shouldPlayProfileThemeSong = Boolean(profileThemeSongSrc);
+  const shouldShowSpotifyThemeWidget = Boolean(profileThemeSpotifyEmbedUrl);
 
   useEffect(() => {
     const audio = profileThemeAudioRef.current;
@@ -3342,6 +3444,7 @@ export default function ProfilePage() {
       setAdminSubscriptionError(null);
       setAdminSubscriptionSuccess(null);
       setAdminThemeSongInput("");
+      setAdminSpotifyWidgetInput("");
       setAdminThemeSongError(null);
       setAdminThemeSongSuccess(null);
       setDeleteAccountError(null);
@@ -3389,11 +3492,23 @@ export default function ProfilePage() {
     setAdminPasswordResetSuccess(null);
     setAdminSubscriptionError(null);
     setAdminSubscriptionSuccess(null);
+    const normalizedActiveThemeSongKey = normalizeProfileThemeSongKey(activeProfile.themeSongKey);
+    const activeSpotifyThemeSelection = parseSpotifyThemeSongSelection(normalizedActiveThemeSongKey);
     setAdminThemeSongInput(
-      normalizeProfileThemeSongKey(activeProfile.themeSongKey) ??
-        (typeof activeProfile.profileId === "number"
-          ? PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID.get(activeProfile.profileId) ?? ""
-          : "")
+      !activeSpotifyThemeSelection
+        ? normalizedActiveThemeSongKey ??
+            (typeof activeProfile.profileId === "number"
+              ? PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID.get(activeProfile.profileId) ?? ""
+              : "")
+        : ""
+    );
+    setAdminSpotifyWidgetInput(
+      activeSpotifyThemeSelection
+        ? buildSpotifyThemeOpenUrl(
+            activeSpotifyThemeSelection.entityType,
+            activeSpotifyThemeSelection.id
+          )
+        : ""
     );
     setAdminThemeSongError(null);
     setAdminThemeSongSuccess(null);
@@ -4640,9 +4755,19 @@ export default function ProfilePage() {
       return;
     }
 
-    const normalizedThemeSongKey = normalizeProfileThemeSongKey(adminThemeSongInput);
+    const normalizedSpotifyThemeSongKey = normalizeProfileThemeSongKey(adminSpotifyWidgetInput);
+    const useSpotifyThemeSong = Boolean(adminSpotifyWidgetInput.trim());
+    const normalizedThemeSongKey = useSpotifyThemeSong
+      ? normalizedSpotifyThemeSongKey
+      : normalizeProfileThemeSongKey(adminThemeSongInput);
 
-    if (adminThemeSongInput.trim() && !normalizedThemeSongKey) {
+    if (useSpotifyThemeSong) {
+      if (!normalizedSpotifyThemeSongKey || !normalizedSpotifyThemeSongKey.startsWith("spotify:")) {
+        setAdminThemeSongError("Enter a valid Spotify link.");
+        setAdminThemeSongSuccess(null);
+        return;
+      }
+    } else if (adminThemeSongInput.trim() && !normalizedThemeSongKey) {
       setAdminThemeSongError("Select a valid profile track.");
       setAdminThemeSongSuccess(null);
       return;
@@ -4659,14 +4784,30 @@ export default function ProfilePage() {
       );
 
       applyUpdatedProfileSnapshot(snapshot);
+      const savedThemeSongKey = normalizeProfileThemeSongKey(snapshot?.themeSongKey);
+      const savedSpotifyThemeSelection = parseSpotifyThemeSongSelection(savedThemeSongKey);
       setAdminThemeSongInput(
-        normalizeProfileThemeSongKey(snapshot?.themeSongKey) ??
-          (typeof activeProfile.profileId === "number"
-            ? PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID.get(activeProfile.profileId) ?? ""
-            : "")
+        !savedSpotifyThemeSelection
+          ? savedThemeSongKey ??
+              (typeof activeProfile.profileId === "number"
+                ? PROFILE_THEME_DEFAULT_KEY_BY_PROFILE_ID.get(activeProfile.profileId) ?? ""
+                : "")
+          : ""
+      );
+      setAdminSpotifyWidgetInput(
+        savedSpotifyThemeSelection
+          ? buildSpotifyThemeOpenUrl(
+              savedSpotifyThemeSelection.entityType,
+              savedSpotifyThemeSelection.id
+            )
+          : ""
       );
       setAdminThemeSongSuccess(
-        normalizedThemeSongKey ? "Profile music updated." : "Profile music reset to default."
+        normalizedThemeSongKey
+          ? useSpotifyThemeSong
+            ? "Spotify widget updated."
+            : "Profile music updated."
+          : "Profile music reset to default."
       );
     } catch (error) {
       setAdminThemeSongError(
@@ -5978,7 +6119,7 @@ export default function ProfilePage() {
       </div>
       {activeProfile ? (
         <>
-          {shouldPlayProfileThemeSong && !isAdminPanelOpen ? (
+          {(shouldPlayProfileThemeSong || shouldShowSpotifyThemeWidget) && !isAdminPanelOpen ? (
             <div className="fixed bottom-6 left-6 z-40 flex flex-col items-start gap-3">
               {isProfileThemePanelOpen ? (
                 <div className="w-[min(88vw,272px)] rounded-[24px] border border-[#372028] bg-[radial-gradient(circle_at_top_left,rgba(255,183,197,0.18),transparent_54%),linear-gradient(180deg,rgba(22,13,17,0.98)_0%,rgba(8,8,9,0.98)_100%)] p-4 shadow-[0_0_38px_rgba(255,183,197,0.14)] backdrop-blur-md">
@@ -5993,72 +6134,99 @@ export default function ProfilePage() {
                     </div>
                     <span
                       className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
-                        profileThemeIsPlaying
+                        shouldShowSpotifyThemeWidget
+                          ? "border-[#2b3f32] bg-[#0f1712] text-[#8ce5b2]"
+                          : profileThemeIsPlaying
                           ? "border-[#ffb7c5]/40 bg-[#1b1015] text-[#ffb7c5] shadow-[0_0_16px_rgba(255,183,197,0.16)]"
                           : "border-[#2d2d2d] bg-[#111111] text-gray-400"
                       }`}
                     >
-                      {profileThemeIsPlaying ? "Playing" : "Paused"}
+                      {shouldShowSpotifyThemeWidget ? "Spotify Widget" : profileThemeIsPlaying ? "Playing" : "Paused"}
                     </span>
                   </div>
-                  <div className="mt-4 rounded-[20px] border border-[#2a181d] bg-[linear-gradient(180deg,rgba(18,11,14,0.96)_0%,rgba(11,11,12,0.96)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,183,197,0.04)]">
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          void handleProfileThemeToggle();
-                        }}
-                        aria-label={profileThemeIsPlaying ? "Pause music" : "Play music"}
-                        className={`inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full border transition ${
-                          profileThemeIsPlaying
-                            ? "border-[#ffb7c5]/45 bg-[#ffb7c5] text-black shadow-[0_0_22px_rgba(255,183,197,0.22)] hover:bg-[#ffc8d3]"
-                            : "border-[#ffb7c5]/35 bg-[linear-gradient(180deg,#241118_0%,#140d11_100%)] text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.16)] hover:border-[#ffb7c5]/60 hover:text-white"
-                        }`}
-                      >
-                        <MusicGlyph playing={profileThemeIsPlaying} />
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3 text-[10px] font-medium text-gray-400">
-                          <span>{formatAudioClock(profileThemeCurrentTime)}</span>
-                          <span>{formatAudioClock(profileThemeDuration)}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={profileThemeDuration > 0 ? profileThemeDuration : 0}
-                          step={0.1}
-                          value={Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime)}
-                          onChange={handleProfileThemeSeek}
-                          disabled={profileThemeDuration <= 0}
-                          style={buildMusicSliderStyle(
-                            Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime),
-                            profileThemeDuration > 0 ? profileThemeDuration : 1
-                          )}
-                          className={`mt-2 ${musicSliderClassName}`}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 rounded-[18px] border border-[#26151a] bg-[linear-gradient(180deg,rgba(16,10,13,0.94)_0%,rgba(10,10,11,0.94)_100%)] px-3 py-2.5">
-                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.26em] text-[#ffb7c5]">
-                        Volume
-                      </span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.01}
-                        value={profileThemeVolume}
-                        onChange={handleProfileThemeVolumeChange}
-                        style={buildMusicSliderStyle(profileThemeVolume, 1)}
-                        className={musicSliderClassName}
+                  {shouldShowSpotifyThemeWidget && profileThemeSpotifyEmbedUrl ? (
+                    <div className="mt-4 rounded-[20px] border border-[#2a181d] bg-[linear-gradient(180deg,rgba(18,11,14,0.96)_0%,rgba(11,11,12,0.96)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,183,197,0.04)]">
+                      <iframe
+                        src={profileThemeSpotifyEmbedUrl}
+                        width="100%"
+                        height="152"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy"
+                        className="rounded-xl border border-[#2d1d22]"
                       />
-                      <span className="w-10 shrink-0 text-right text-[10px] font-medium text-gray-400">
-                        {Math.round(profileThemeVolume * 100)}%
-                      </span>
+                      {profileThemeSpotifyOpenUrl ? (
+                        <a
+                          href={profileThemeSpotifyOpenUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-3 inline-flex items-center rounded-full border border-[#3a2a31] bg-[#140d11] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ffb7c5] transition hover:border-[#ffb7c5]/45 hover:text-white"
+                        >
+                          Open in Spotify
+                        </a>
+                      ) : null}
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="mt-4 rounded-[20px] border border-[#2a181d] bg-[linear-gradient(180deg,rgba(18,11,14,0.96)_0%,rgba(11,11,12,0.96)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,183,197,0.04)]">
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void handleProfileThemeToggle();
+                            }}
+                            aria-label={profileThemeIsPlaying ? "Pause music" : "Play music"}
+                            className={`inline-flex h-10 min-w-10 shrink-0 items-center justify-center rounded-full border transition ${
+                              profileThemeIsPlaying
+                                ? "border-[#ffb7c5]/45 bg-[#ffb7c5] text-black shadow-[0_0_22px_rgba(255,183,197,0.22)] hover:bg-[#ffc8d3]"
+                                : "border-[#ffb7c5]/35 bg-[linear-gradient(180deg,#241118_0%,#140d11_100%)] text-[#ffb7c5] shadow-[0_0_18px_rgba(255,183,197,0.16)] hover:border-[#ffb7c5]/60 hover:text-white"
+                            }`}
+                          >
+                            <MusicGlyph playing={profileThemeIsPlaying} />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3 text-[10px] font-medium text-gray-400">
+                              <span>{formatAudioClock(profileThemeCurrentTime)}</span>
+                              <span>{formatAudioClock(profileThemeDuration)}</span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={profileThemeDuration > 0 ? profileThemeDuration : 0}
+                              step={0.1}
+                              value={Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime)}
+                              onChange={handleProfileThemeSeek}
+                              disabled={profileThemeDuration <= 0}
+                              style={buildMusicSliderStyle(
+                                Math.min(profileThemeCurrentTime, profileThemeDuration || profileThemeCurrentTime),
+                                profileThemeDuration > 0 ? profileThemeDuration : 1
+                              )}
+                              className={`mt-2 ${musicSliderClassName}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 rounded-[18px] border border-[#26151a] bg-[linear-gradient(180deg,rgba(16,10,13,0.94)_0%,rgba(10,10,11,0.94)_100%)] px-3 py-2.5">
+                        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
+                          <span className="font-mono text-[10px] uppercase tracking-[0.26em] text-[#ffb7c5]">
+                            Volume
+                          </span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={profileThemeVolume}
+                            onChange={handleProfileThemeVolumeChange}
+                            style={buildMusicSliderStyle(profileThemeVolume, 1)}
+                            className={musicSliderClassName}
+                          />
+                          <span className="w-10 shrink-0 text-right text-[10px] font-medium text-gray-400">
+                            {Math.round(profileThemeVolume * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : null}
               <button
@@ -6073,7 +6241,9 @@ export default function ProfilePage() {
               >
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    profileThemeIsPlaying ? "bg-[#ff7da0] shadow-[0_0_14px_rgba(255,125,160,0.9)]" : "bg-current/60"
+                    shouldShowSpotifyThemeWidget || profileThemeIsPlaying
+                      ? "bg-[#ff7da0] shadow-[0_0_14px_rgba(255,125,160,0.9)]"
+                      : "bg-current/60"
                   }`}
                 />
                 Music
@@ -6425,6 +6595,23 @@ export default function ProfilePage() {
                             </option>
                           ))}
                         </select>
+                      </label>
+                      <label className="mt-4 block">
+                        <span className="mb-2 block text-xs text-gray-500">{t("Spotify URL", "Spotify URL")}</span>
+                        <input
+                          type="text"
+                          value={adminSpotifyWidgetInput}
+                          onChange={(event) => {
+                            setAdminSpotifyWidgetInput(event.target.value);
+                            setAdminThemeSongError(null);
+                            setAdminThemeSongSuccess(null);
+                          }}
+                          placeholder="https://open.spotify.com/track/..."
+                          className="w-full rounded-2xl border border-[#232323] bg-[#090909] px-4 py-3 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#ffb7c5]/55"
+                        />
+                        <p className="mt-2 text-xs leading-relaxed text-gray-500">
+                          {t("If Spotify URL is filled, it will be saved as an embedded widget.", "Если заполнен Spotify URL, он сохранится как встраиваемый виджет.")}
+                        </p>
                       </label>
                       <div className="mt-4 flex flex-wrap items-center gap-3">
                         <button
